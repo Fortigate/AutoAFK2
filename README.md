@@ -26,3 +26,7 @@ Will run these tasks to complete your daily quests:
   
 
 More functionality and features coming as as when I have energy to add them.
+
+## How to use
+
+Get the latest [release](https://github.com/Fortigate/AutoAFK2/releases), specify your ADB port in settings.ini and run with appropriate launch parameter
