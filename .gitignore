@@ -1,0 +1,6 @@
+/adb.exe
+/AdbWinApi.dll
+/output/
+/.idea/
+venv
+*.pyc
