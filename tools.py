@@ -8,15 +8,15 @@ from PIL import Image
 import io
 import scrcpy
 import numpy as np
+import logging
 
+logger = logging.getLogger('autoafk2')
 cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
 config = configparser.ConfigParser()
-config.read(os.path.join(cwd, 'settings.ini'))  # load settings
 adb = Client(host="127.0.0.1", port=5037)
-port = config.get('ADVANCED', 'port')
 global device
 
-def connect_and_launch():
+def connect_and_launch(port):
     global device
     adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
 
@@ -25,35 +25,41 @@ def connect_and_launch():
         Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
         Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
         wait(2)
-        if len(adb.devices()) > 0:
-            for active_devices in adb.devices():
-                if active_devices.serial[0] == 'e':
-                    device_name = active_devices.serial
-        elif len(adb.devices()) < 1:
-            device_name = '127.0.0.1:' + port
-            Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
+        device = adb.device(get_adb_device(port))
         
-        device = adb.device(device_name)
-
-        print('Device ' + str(device.serial) + " connected successfully")
+        if device is not None:
+            logger.info('Device ' + str(device.serial) + " connected successfully")
+        else:
+            logger.info('No device found!')
+            exit(1)
     else:
         device = get_connected_device()
 
     # Get scrcpy running
     scrcpyClient = scrcpy.Client(device=device.serial)
     scrcpyClient.max_fps = 5
-    scrcpyClient.bitrate = 8000000
+    scrcpyClient.bitrate = 16000000
     scrcpyClient.start(daemon_threaded=True)
     setattr(device, 'srccpy', scrcpyClient)
 
     # Launch/focus the game
     device.shell('monkey -p  com.farlightgames.igame.gp 1')
 
+def get_adb_device(port):
+    adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
+    if len(adb.devices()) > 0:
+        for active_devices in adb.devices():
+            if active_devices.serial[0] == 'e':
+                return active_devices.serial
+    elif len(adb.devices()) < 1:
+        device_name = '127.0.0.1:' + port
+        Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
+        return device_name
 
 # Confirms that the game has loaded by checking for the campaign_selected button. We press a few buttons to navigate back if needed
 # May also require a ClickXY over Campaign to clear Time Limited Deals that appear
 def waitUntilGameActive():
-    print('Waiting for game to load..')
+    logger.info('Waiting for game to load..')
     loadingcounter = 0
     timeoutcounter = 0
     loaded = 1
@@ -70,11 +76,10 @@ def waitUntilGameActive():
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
             loadingcounter += 1
         if timeoutcounter > 30:  # Long so patching etc doesn't lead to timeout
-            print('Timed out while loading!')
+            logger.info('Timed out while loading!')
             save_screenshot('timeout')
             exit()
-    print('Game Loaded!')
-    #save_screenshot('loaded')
+    logger.info('Game Loaded!\n')
 
 # Clicks on the given XY coordinates
 def clickXY(x, y, seconds=1):
@@ -106,7 +111,7 @@ def returnxy(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale
 # 2.0 will run with 200% of the default wait times
 # This is handy for slower machines where we need to wait for sections/images to load
 def wait(seconds=1):
-    time.sleep(seconds * float(config.get('ADVANCED', 'loadingMuliplier')))
+    time.sleep(seconds * float(config.get('ADVANCED', 'loading_multiplier')))
 
 # If the given image is found, it will click on the center of it, if not returns "No image found"
 # Confidence is how sure we are we have the right image, for animated icons we can lower the value
@@ -131,7 +136,7 @@ def click(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=Fa
                 wait(seconds)
                 return
             if suppress is not True:
-                print('Retrying ' + image + ' search: ' + str(counter+1) + '/' + str(retry))
+                logger.info('Retrying ' + image + ' search: ' + str(counter+1) + '/' + str(retry))
             counter = counter + 1
             wait(1)
     elif result != None:
@@ -142,7 +147,7 @@ def click(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=Fa
         wait(seconds)
     else:
         if suppress is not True:
-            print('Image:' + image + ' not found!')
+            logger.info('Image:' + image + ' not found!')
         wait(seconds)
 
 # Returns True if the image is found, False if not
