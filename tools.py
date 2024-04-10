@@ -13,28 +13,31 @@ cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
 config = configparser.ConfigParser()
 config.read(os.path.join(cwd, 'settings.ini'))  # load settings
 adb = Client(host="127.0.0.1", port=5037)
-# port = config.get('ADVANCED', 'port')
-port = '5575'
+port = config.get('ADVANCED', 'port')
 global device
 
 def connect_and_launch():
     global device
-    device_name = ''
-    # Fire up ADB and connect using the port in settings.ini
     adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
-    Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
-    Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
-    wait(2)
-    if len(adb.devices()) > 0:
-        for active_devices in adb.devices():
-            if active_devices.serial[0] == 'e':
-                device_name = active_devices.serial
-    elif len(adb.devices()) < 1:
-        device_name = '127.0.0.1:' + port
-        Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
-    device = adb.device(device_name)
 
-    print('Device ' + str(device.serial) + " connected successfully")
+    if not get_connected_device():
+        # Fire up ADB and connect using the port in settings.ini
+        Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
+        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
+        wait(2)
+        if len(adb.devices()) > 0:
+            for active_devices in adb.devices():
+                if active_devices.serial[0] == 'e':
+                    device_name = active_devices.serial
+        elif len(adb.devices()) < 1:
+            device_name = '127.0.0.1:' + port
+            Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
+        
+        device = adb.device(device_name)
+
+        print('Device ' + str(device.serial) + " connected successfully")
+    else:
+        device = get_connected_device()
 
     # Get scrcpy running
     scrcpyClient = scrcpy.Client(device=device.serial)
@@ -62,6 +65,7 @@ def waitUntilGameActive():
     while loadingcounter < loaded:
         clickXY(420, 50)  # Neutral location for closing reward pop ups etc, should never be an in game button here
         click('buttons/back', suppress=True, region=(50, 1750, 150, 150))
+        click('buttons/claim', suppress=True) # Claim Esperia monthly so it doesnt block the view
         timeoutcounter += 1
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
             loadingcounter += 1
@@ -69,8 +73,8 @@ def waitUntilGameActive():
             print('Timed out while loading!')
             save_screenshot('timeout')
             exit()
-    print('Game Loaded!\n')
-    save_screenshot('loaded')
+    print('Game Loaded!')
+    #save_screenshot('loaded')
 
 # Clicks on the given XY coordinates
 def clickXY(x, y, seconds=1):
@@ -102,7 +106,7 @@ def returnxy(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale
 # 2.0 will run with 200% of the default wait times
 # This is handy for slower machines where we need to wait for sections/images to load
 def wait(seconds=1):
-    time.sleep(seconds)
+    time.sleep(seconds * float(config.get('ADVANCED', 'loadingMuliplier')))
 
 # If the given image is found, it will click on the center of it, if not returns "No image found"
 # Confidence is how sure we are we have the right image, for animated icons we can lower the value
@@ -201,3 +205,13 @@ def return_pixel_colour(x, y, c, seconds=1):
 
     wait(seconds)
     return screenshot[y, x, c]
+
+def get_connected_device():
+    try:
+        devices = adb.devices()
+        if devices:
+            return devices[0]
+        else:
+            return None
+    except Exception as e:
+        return None

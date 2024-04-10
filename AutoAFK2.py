@@ -21,9 +21,10 @@ def dailies():
     friend_points_collect()
     mail_connect()
     emporium_purchases()
-    arena()
+    #arena() - BUG: gets stuck on victory screen
     quests()
     print('Dailies done!')
+    return
 
 def teamup():
     while 1 == 1:
@@ -91,7 +92,17 @@ def team_up():
         wait(3)
     team_up()
 
-
+def claim_esperia_monthly():
+    print('Claiming AFK Rewards')
+    clickXY(100, 1800, seconds=4)  # Open AFK Rewards
+    clickXY(550, 1400)  # Click Chest
+    clickXY(550, 1080)  # Click Collect
+    # Double FR
+    clickXY(100, 1800)  # Close
+    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
+        return
+    else:
+        print('Something went wrong')
 
 def claim_afk_rewards():
     print('Claiming AFK Rewards')
