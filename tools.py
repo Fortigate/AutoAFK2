@@ -211,6 +211,7 @@ def return_pixel_colour(x, y, c, seconds=1):
     wait(seconds)
     return screenshot[y, x, c]
 
+# Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
 def get_connected_device():
     try:
         devices = adb.devices()
