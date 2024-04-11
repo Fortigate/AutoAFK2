@@ -212,8 +212,8 @@ def recover(count=3):
     if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
         return True
     while timer < count:
-        click('buttons/back')
-        click('buttons/back2')
+        click('buttons/back', suppress=True)
+        click('buttons/back2', suppress=True)
         click_location('neutral')
         timer += 1
         if timer > count:
