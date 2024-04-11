@@ -1,57 +1,72 @@
 import sys
-
-from tools import *
 import argparse
 from humanfriendly import format_timespan
-import logging
+from tools import * # Includes logging so we don't import here also
 
-version = '0.0.7'
+# Global variables for tracking time passed between team-up activities
+global last_synergy
+last_synergy = time.time()
+global last_corrupt
+last_corrupt = time.time()
+# Version output so I can work out which version I'm actually running for debugging
+version = '0.0.11'
+
+# Configure launch arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--teamup", action = 'store_true', help = "Run the Team-up function")
 parser.add_argument("-d", "--dailies", action = 'store_true', help = "Run the Dailies function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
 args = vars(parser.parse_args())
 
-global last_synergy
-last_synergy = time.time()
-global last_corrupt
-last_corrupt = time.time()
-
+# Work out which config file we're reading/writing to/from
 if args['config']:
     settings = os.path.join(cwd, args['config'])
 else:
     settings = os.path.join(cwd, 'settings.ini')
 config.read(settings)
 
+# Make a nice name for the output log file
 if settings == 'settings.ini':
     logname = 'autoafk2.log'
 else:
     logname = settings.split('.')[0] + '.log'
-
-logging.StreamHandler(stream=sys.stderr)
 
 # File handler
 file_log_handler = logging.FileHandler(filename=logname)
 logger.addHandler(file_log_handler)
 formatter = logging.Formatter('%(asctime)s %(message)s')
 file_log_handler.setFormatter(formatter)
-
+# STDERR handler so we don't lose that
+logging.StreamHandler(stream=sys.stderr)
+# Make timestamps etc look pretty
 logging.basicConfig(format='%(asctime)s %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.INFO)
-
+# Define logger for tools.py usage also
 logger = logging.getLogger('autoafk2')
 
-logger.info('\nLoaded settings file: ' + str(settings.split('\\')[-1]))
+# This logs execptions via logger which is great for finding out what went wrong with unnattended sessions
+# Copied word for word from: https://stackoverflow.com/questions/6234405/logging-uncaught-exceptions-in-python
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_exception
+
+
+# Boot up text
+logger.info('') # Newline for easier log file reading with new sessions
+logger.info('Loaded settings file: ' + str(settings.split('\\')[-1]))
 logger.info('Version: ' + version)
 
+# Boot up activities before tasks are ran
 connect_and_launch(port=config.get('ADVANCED', 'port'))
 waitUntilGameActive()
 
 #TODO
-# Settings.ini for everything
-# Dream Realm collection and single run
-# All heroes Affinity clicking
 # Travelogue collection
 
 def dailies():
@@ -63,16 +78,20 @@ def dailies():
         mail_connect()
     if config.getboolean('ACTIVITIES', 'emporium_purchases'):
         emporium_purchases()
-    if config.getint('ACTIVITIES', 'arena_battles') > 0:
-        arena(config.getint('ACTIVITIES', 'arena_battles'))
     if config.getboolean('ACTIVITIES', 'dream_realm'):
         dream_realm()
+    if config.getint('ACTIVITIES', 'arena_battles') > 0:
+        arena(config.getint('ACTIVITIES', 'arena_battles'))
     if config.getboolean('ACTIVITIES', 'claim_afk'):
         claim_afk_rewards()
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         quests()
+    if config.getboolean('ACTIVITIES', 'farm_affinity'):
+        farm_affinty()
     logger.info('Dailies done!')
 
+# To run the task on a loop forever and ever
+# Its in two 1 == 1 loops so we can call return on the main function when it gets stuck and restart it from this function for stability
 def teamup():
     while 1 == 1:
         team_up()
@@ -81,6 +100,7 @@ def team_up():
     timer = 0
     start = time.time()
     while 1 == 1:
+        # First ensure
         while not isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
             click('buttons/back', suppress=True)
             click_location('neutral')
@@ -131,7 +151,7 @@ def team_up():
             clickXY(120, 1300)
             clickXY(270, 1300)
             clickXY(450, 1300)
-            click('teamup/ready_lobby')
+            click('teamup/ready_lobby', confidence=0.8)
         while not isVisible('labels/tap_to_close', confidence=0.8):
             timer += 1
             if timer > 20:
@@ -248,16 +268,18 @@ def dream_realm():
     clickXY(450, 1825)
     if isVisible('labels/battle_modes'):
         click('buttons/dream_realm', seconds=2)
-        clickXY(1020, 280)
-        clickXY(1020, 280)
+        clickXY(1020, 280, seconds=2)
+        clickXY(1020, 280, seconds=2)
         clickXY(550, 1800)
-        click('buttons/back')
+        click('buttons/back', seconds=3)
         clickXY(550, 1800, seconds=4) # Battle
         clickXY(550, 1800) # Battle begin from hero selection
         while not isVisible('labels/tap_to_close'):
+            wait()
+            click_location('neutral')
+        while isVisible('labels/tap_to_close'): # Few clicks to clear loot too
             click('labels/tap_to_close', seconds=3, suppress=True)
-            clickXY(100, 1800)
-        logger.info('battle compelte!')
+        logger.info('battle complete!')
         click('buttons/back')
         click('buttons/back2')
 
@@ -285,7 +307,7 @@ def quests():
 
     click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2)
     click('buttons/back', region=(50, 1750, 150, 150), seconds=2)
-    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2)
+    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2, suppress=True)
 
     if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
         return
@@ -293,6 +315,20 @@ def quests():
         logger.info('Something went wrong')
         save_screenshot('something_went_wrong')
 
+def farm_affinty(heroes=40):
+    logger.info('Clicking every hero 3 times for +6 affinity')
+    counter = 1
+    clickXY(650, 1850, seconds=3) # Open heroes hall
+    clickXY(150, 850, seconds=3) # Click top right hero
+    while counter < heroes:
+        clickXY(550, 1000)
+        clickXY(550, 1000)
+        clickXY(550, 1000)
+        clickXY(620, 1800)
+        clickXY(1000, 1100)
+        counter += 1
+        click('buttons/back')
+        click('buttons/back2')
 
 if args['dailies']:
     logger.info('Running dailies\n')

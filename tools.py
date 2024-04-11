@@ -1,14 +1,14 @@
-from ppadb.client import Client
 import os
-from subprocess import Popen, PIPE
 import configparser
 import time
-from pyscreeze import locate
-from PIL import Image
 import io
 import scrcpy
 import numpy as np
 import logging
+from pyscreeze import locate
+from PIL import Image
+from subprocess import Popen, PIPE
+from ppadb.client import Client
 
 logger = logging.getLogger('autoafk2')
 cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
@@ -56,17 +56,12 @@ def get_adb_device(port):
         Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
         return device_name
 
-# Confirms that the game has loaded by checking for the campaign_selected button. We press a few buttons to navigate back if needed
-# May also require a ClickXY over Campaign to clear Time Limited Deals that appear
+# Confirms that the game has loaded by checking for the sunandstars icon nex tto the minimap. We press a few buttons to navigate back if needed
 def waitUntilGameActive():
     logger.info('Waiting for game to load..')
     loadingcounter = 0
     timeoutcounter = 0
     loaded = 1
-    # if args['dailies']:
-    #     loaded = 3 # If we're running unattended we want to make real sure there's no delayed popups
-    # else:
-    #     loaded = 1
 
     while loadingcounter < loaded:
         clickXY(420, 50)  # Neutral location for closing reward pop ups etc, should never be an in game button here
