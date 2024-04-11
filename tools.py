@@ -66,6 +66,7 @@ def waitUntilGameActive():
     while loadingcounter < loaded:
         clickXY(420, 50)  # Neutral location for closing reward pop ups etc, should never be an in game button here
         click('buttons/back', suppress=True, region=(50, 1750, 150, 150))
+        click('buttons/back2', suppress=True, region=(50, 1750, 150, 150))
         click('buttons/claim', suppress=True) # Claim Esperia monthly so it doesnt block the view
         timeoutcounter += 1
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
@@ -205,6 +206,38 @@ def return_pixel_colour(x, y, c, seconds=1):
 
     wait(seconds)
     return screenshot[y, x, c]
+
+def recover(count=3):
+    timer = 0
+    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
+        return True
+    while timer < count:
+        click('buttons/back')
+        click('buttons/back2')
+        click_location('neutral')
+        timer += 1
+        if timer > count:
+            return False
+            exit()
+        if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
+            return True
+
+# We call this at the start and end of every activity to make sure we are back at the main map screen, if not we are lost and exit
+def safe_open_and_close(name, state):
+    if state == 'open':
+        logger.debug('opening task ' + name)
+        if recover() is True:
+            logger.debug(name + ' opened successfully!')
+        else:
+            logger.info('Issue opening ' + name)
+
+    if state == 'close':
+        if recover() is True:
+            logger.debug(name + ' completed successfully!')
+            return True
+        else:
+            logger.info('Issue closing ' + name + ', exiting.')
+            exit()
 
 # Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
 def get_connected_device():

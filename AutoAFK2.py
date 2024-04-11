@@ -1,5 +1,6 @@
 import sys
 import argparse
+import inspect
 from humanfriendly import format_timespan
 from tools import * # Includes logging so we don't import here also
 
@@ -168,6 +169,7 @@ def team_up():
 
 def claim_afk_rewards():
     logger.info('Claiming AFK Rewards')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     clickXY(100, 1800, seconds=4)  # Open AFK Rewards
     clickXY(550, 1400)  # Click Chest
     clickXY(550, 1080)  # Click Collect
@@ -179,30 +181,42 @@ def claim_afk_rewards():
             clickXY(1000, 1800)
 
     clickXY(100, 1800)  # Close
-    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-        return
-    else:
-        logger.info('Something went wrong')
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('AFK Rewards Claimed!\n')
 
 def friend_points_collect():
-    logger.info('Claiming friend gifts')
+    logger.info('Claiming Friend Gifts')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     click('buttons/main_menu', region=(900, 1750, 150, 150))
     click('buttons/friends', region=(30, 1450, 200, 200), seconds=2)
     clickXY(700, 1800, seconds=2)
     clickXY(850, 300, seconds=2)
     clickXY(420, 50, seconds=2)  # Neutral location for closing reward pop ups etc, should never be an in game button here
-    go_back_and_check()
+    click('buttons/back', region=(50, 1750, 150, 150))
+    click('buttons/back', region=(50, 1750, 150, 150))
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Friend Gifts Claimed!\n')
 
 def mail_connect():
     logger.info('Claiming Mail')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     click('buttons/main_menu', region=(900, 1750, 150, 150))
     click('buttons/mail', region=(240, 1250, 200, 200), seconds=2)
     clickXY(750, 1800, seconds=2)
     clickXY(750, 1800, seconds=2)
-    go_back_and_check()
+    click('buttons/back', region=(50, 1750, 150, 150))
+    click('buttons/back', region=(50, 1750, 150, 150))
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Mail Claimed!\n')
 
 def emporium_purchases():
-    logger.info('Purchasing daily shop bits')
+    logger.info('Purchasing daily summon card')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     click('buttons/main_menu', region=(900, 1750, 150, 150))
     click('buttons/emporium', region=(850, 1250, 200, 200), seconds=2)
     clickXY(100, 700, seconds=2) # guild store
@@ -210,14 +224,17 @@ def emporium_purchases():
     clickXY(650, 1800, seconds=2)  # purchase
     clickXY(875, 1250, seconds=2)  # diamonds confirm
     click_location('neutral')
-    go_back_and_check()
+    click('buttons/back2', region=(50, 1750, 150, 150))
+    click('buttons/back', region=(50, 1750, 150, 150))
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Daily summon card purchased!\n')
 
 def arena(battles=9):
-    if battles == 0:
-        logger.info('No Battles configured, skipping')
-        return
     counter = 0
     logger.info('Battling Arena')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     clickXY(450, 1825)
     if isVisible('labels/battle_modes'):
         click('buttons/arena', seconds=2)
@@ -243,13 +260,14 @@ def arena(battles=9):
             counter += 1
         click('buttons/back', region=(50, 1750, 150, 150), seconds=2)
         click('buttons/back2', region=(50, 1750, 150, 150))
-    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-        return
-    else:
-        logger.info('Something went wrong')
-        save_screenshot('something_went_wrong')
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Arena battles completed!\n')
 
 def dream_realm():
+    logger.info('Battling Dream Realm')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     clickXY(450, 1825)
     if isVisible('labels/battle_modes'):
         click('buttons/dream_realm', seconds=2)
@@ -268,8 +286,13 @@ def dream_realm():
         click('buttons/back')
         click('buttons/back2')
 
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Dream Realm completed!\n')
+
 def quests():
-    logger.info('Collecting quests')
+    logger.info('Collecting Quests')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     click('buttons/main_menu', region=(900, 1750, 150, 150))
     click('buttons/quests', seconds=3)
 
@@ -290,10 +313,17 @@ def quests():
     while isVisible('buttons/collect'):
         click('buttons/collect')
 
-    go_back_and_check()
+    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2)
+    click('buttons/back', region=(50, 1750, 150, 150), seconds=2)
+    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2, suppress=True)
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Quests collected!\n')
 
 def farm_affinty(heroes=40):
     logger.info('Clicking every hero 3 times for +6 affinity')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     counter = 1
     clickXY(650, 1850, seconds=3) # Open heroes hall
     clickXY(150, 850, seconds=3) # Click top right hero
@@ -306,6 +336,9 @@ def farm_affinty(heroes=40):
         counter += 1
         click('buttons/back')
         click('buttons/back2')
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Affinity farmed!\n')
 
 def noble_path():
     logger.info('Collecting noble path')
@@ -338,7 +371,7 @@ def go_back_and_check():
         save_screenshot('no_way_out')
 
 if args['dailies']:
-    logger.info('Running dailies\n')
+    logger.info('Running Dailies\n')
     dailies()
 
 if args['teamup']:
