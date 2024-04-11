@@ -18,19 +18,22 @@ global device
 
 def connect_and_launch(port):
     global device
-    device_name = ''
-    # Fire up ADB and connect using the port in settings.ini
     adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
-    Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
-    Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
-    wait(2) # Restarting adb and waiting fixes most issues with connecting
-    device = adb.device(get_adb_device(port)) # Get device name from the function() and give it a name so we can use it
 
-    if device is not None:
-        logger.info('Device ' + str(device.serial) + " connected successfully")
+    if not get_connected_device():
+        # Fire up ADB and connect using the port in settings.ini
+        Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
+        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
+        wait(2)
+        device = adb.device(get_adb_device(port))
+        
+        if device is not None:
+            logger.info('Device ' + str(device.serial) + " connected successfully")
+        else:
+            logger.info('No device found!')
+            exit(1)
     else:
-        logger.info('No device found!')
-        exit(1)
+        device = get_connected_device()
 
     # Get scrcpy running
     scrcpyClient = scrcpy.Client(device=device.serial)
@@ -63,7 +66,7 @@ def waitUntilGameActive():
     while loadingcounter < loaded:
         clickXY(420, 50)  # Neutral location for closing reward pop ups etc, should never be an in game button here
         click('buttons/back', suppress=True, region=(50, 1750, 150, 150))
-        click('buttons/claim', suppress=True)
+        click('buttons/claim', suppress=True) # Claim Esperia monthly so it doesnt block the view
         timeoutcounter += 1
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
             loadingcounter += 1
@@ -202,3 +205,14 @@ def return_pixel_colour(x, y, c, seconds=1):
 
     wait(seconds)
     return screenshot[y, x, c]
+
+# Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
+def get_connected_device():
+    try:
+        devices = adb.devices()
+        if devices:
+            return devices[0]
+        else:
+            return None
+    except Exception as e:
+        return None
