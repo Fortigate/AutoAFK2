@@ -86,6 +86,8 @@ def dailies():
         quests()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
         farm_affinty()
+    if config.getboolean('ACTIVITIES', 'noble_path'):
+        noble_path()
     logger.info('Dailies done!')
 
 # To run the task on a loop forever and ever
@@ -189,12 +191,7 @@ def friend_points_collect():
     clickXY(700, 1800, seconds=2)
     clickXY(850, 300, seconds=2)
     clickXY(420, 50, seconds=2)  # Neutral location for closing reward pop ups etc, should never be an in game button here
-    click('buttons/back', region=(50, 1750, 150, 150))
-    click('buttons/back', region=(50, 1750, 150, 150))
-    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-        return
-    else:
-        logger.info('Something went wrong')
+    go_back_and_check()
 
 def mail_connect():
     logger.info('Claiming Mail')
@@ -202,12 +199,7 @@ def mail_connect():
     click('buttons/mail', region=(240, 1250, 200, 200), seconds=2)
     clickXY(750, 1800, seconds=2)
     clickXY(750, 1800, seconds=2)
-    click('buttons/back', region=(50, 1750, 150, 150))
-    click('buttons/back', region=(50, 1750, 150, 150))
-    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-        return
-    else:
-        logger.info('Something went wrong')
+    go_back_and_check()
 
 def emporium_purchases():
     logger.info('Purchasing daily shop bits')
@@ -218,12 +210,7 @@ def emporium_purchases():
     clickXY(650, 1800, seconds=2)  # purchase
     clickXY(875, 1250, seconds=2)  # diamonds confirm
     click_location('neutral')
-    click('buttons/back2', region=(50, 1750, 150, 150))
-    click('buttons/back', region=(50, 1750, 150, 150))
-    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-        return
-    else:
-        logger.info('Something went wrong')
+    go_back_and_check()
 
 def arena(battles=9):
     if battles == 0:
@@ -303,15 +290,7 @@ def quests():
     while isVisible('buttons/collect'):
         click('buttons/collect')
 
-    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2)
-    click('buttons/back', region=(50, 1750, 150, 150), seconds=2)
-    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2, suppress=True)
-
-    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-        return
-    else:
-        logger.info('Something went wrong')
-        save_screenshot('something_went_wrong')
+    go_back_and_check()
 
 def farm_affinty(heroes=40):
     logger.info('Clicking every hero 3 times for +6 affinity')
@@ -327,6 +306,36 @@ def farm_affinty(heroes=40):
         counter += 1
         click('buttons/back')
         click('buttons/back2')
+
+def noble_path():
+    logger.info('Collecting noble path')
+    click('buttons/main_menu', region=(900, 1750, 150, 150))
+    click('buttons/noble_path', seconds=2)
+    click('buttons/noble_quests_inactive', seconds=2)
+
+    # Daily
+    if isVisible('buttons/quick_collect', click=True):
+        click_location('neutral')
+
+    # Weekly - TODO next week, idk how it looks when there is something to collect
+    click('buttons/noble_quests_weekly')
+
+    # Epic - TODO, idk how it looks when there is something to collect
+    click('buttons/noble_quests_epic')
+
+    go_back_and_check()
+
+
+def go_back_and_check():
+    click('buttons/back2', confidence=0.8, suppress=True)
+    click('buttons/back', confidence=0.8, suppress=True)
+    click('buttons/back2', confidence=0.8, suppress=True)
+    click('buttons/back', confidence=0.8, suppress=True)
+    if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
+        return
+    else:
+        logger.info('Could not go back')
+        save_screenshot('no_way_out')
 
 if args['dailies']:
     logger.info('Running dailies\n')
