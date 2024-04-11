@@ -85,10 +85,10 @@ def dailies():
         arena(config.getint('ACTIVITIES', 'arena_battles'))
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         quests()
-    if config.getboolean('ACTIVITIES', 'farm_affinity'):
-        farm_affinty()
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
+    if config.getboolean('ACTIVITIES', 'farm_affinity'):
+        farm_affinty()
     logger.info('Dailies done!')
 
 # To run the task on a loop forever and ever
