@@ -151,7 +151,13 @@ def claim_afk_rewards():
     clickXY(100, 1800, seconds=4)  # Open AFK Rewards
     clickXY(550, 1400)  # Click Chest
     clickXY(550, 1080)  # Click Collect
-    # Double FR
+
+    # Fast rewards
+    for _ in range(config.getint('ACTIVITIES', 'fast_rewards')):
+        if isVisible('buttons/fast_rewards', click=True):
+            click('buttons/confirm')
+            clickXY(1000, 1800)
+
     clickXY(100, 1800)  # Close
     if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
         return
