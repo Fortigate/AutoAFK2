@@ -82,8 +82,6 @@ def dailies():
         dream_realm()
     if config.getint('ACTIVITIES', 'arena_battles') > 0:
         arena(config.getint('ACTIVITIES', 'arena_battles'))
-    if config.getboolean('ACTIVITIES', 'claim_afk'):
-        claim_afk_rewards()
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         quests()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
