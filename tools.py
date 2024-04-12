@@ -9,6 +9,7 @@ from pyscreeze import locate
 from PIL import Image
 from subprocess import Popen, PIPE
 from ppadb.client import Client
+from datetime import datetime
 
 logger = logging.getLogger('autoafk2')
 cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
@@ -213,6 +214,8 @@ def return_pixel_colour(x, y, c, seconds=1):
     return screenshot[y, x, c]
 
 def recover(count=3):
+    timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+    save_screenshot('recovery_' + timestamp)
     timer = 0
     if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
         return True
