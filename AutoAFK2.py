@@ -67,10 +67,12 @@ logger.info('Version: ' + version)
 connect_and_launch(port=config.get('ADVANCED', 'port'))
 waitUntilGameActive()
 
-#TODO
-# Travelogue collection
-
 def dailies():
+    if config.getboolean('ACTIVITIES', 'claim_events'):
+        claim_events()
+
+    return
+
     if config.getboolean('ACTIVITIES', 'claim_afk'):
         claim_afk_rewards()
     if config.getboolean('ACTIVITIES', 'friend_points'):
@@ -87,6 +89,8 @@ def dailies():
         quests()
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
+    if config.getboolean('ACTIVITIES', 'claim_events'):
+        claim_events()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
         farm_affinty()
     logger.info('Dailies done!')
@@ -334,8 +338,8 @@ def noble_path():
     click('buttons/noble_quests_inactive', seconds=2)
 
     # Daily
-    if isVisible('buttons/quick_collect', click=True):
-        click_location('neutral')
+    if isVisible('buttons/claim_all', click=True):
+        clickXY(1000, 1800)
 
     # Weekly - TODO next week, idk how it looks when there is something to collect
     click('buttons/noble_quests_weekly')
@@ -345,6 +349,21 @@ def noble_path():
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Noble path collected!\n')
+
+def claim_events():
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    logger.info('Claiming event rewards')
+    click('buttons/main_menu', region=(900, 1750, 150, 150))
+    click('buttons/event', seconds=2)
+
+    # All Heroes
+    if isVisible('events/all_heroes', click=True):
+        if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
+            logger.info('All Heroes claimed')
+            click_location('neutral')
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Events claimed!\n')
 
 if args['dailies']:
     logger.info('Running Dailies\n')

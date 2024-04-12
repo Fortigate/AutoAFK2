@@ -149,7 +149,7 @@ def click(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=Fa
 # Returns True if the image is found, False if not
 # Confidence value can be reduced for images with animations
 # Retry for retrying image search
-def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0, 0, 1080, 1920)):
+def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0, 0, 1080, 1920), xrelative=0, yrelative=0):
     counter = 0
     screenshot = getFrame()
     search = Image.open(os.path.join(cwd, 'img', image + '.png'))
@@ -162,8 +162,8 @@ def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0,
             if res != None:
                 if click is True:
                     x, y, w, h = res
-                    x_center = round(x + w / 2)
-                    y_center = round(y + h / 2)
+                    x_center = round(x + w / 2) + xrelative
+                    y_center = round(y + h / 2) + yrelative
                     device.input_tap(x_center, y_center)
                 wait(seconds)
                 return True
@@ -172,8 +172,8 @@ def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0,
     elif res != None:
         if click is True:
             x, y, w, h = res
-            x_center = round(x + w / 2)
-            y_center = round(y + h / 2)
+            x_center = round((x + xrelative) + w / 2) 
+            y_center = round((y + yrelative) + h / 2)
             device.input_tap(x_center, y_center)
         wait(seconds)
         return True
