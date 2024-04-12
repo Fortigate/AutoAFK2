@@ -65,7 +65,7 @@ regions = {
     'menu_activities': (20, 950, 1050, 800),
     'back': (50, 1750, 150, 150),
     'chat_window': (184, 362, 850, 1300),
-    'chat_button': (888, 744, 190, 1000),
+    'right_sidebar': (888, 744, 190, 1000),
     'chat_selection': (20, 300, 170, 900),
     'bottom_third': (720, 1280, 360, 640)
 }
@@ -120,7 +120,7 @@ def team_up():
             wait()
         logger.info('Opening chat')
         while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
-            click('teamup/chat', seconds=0, suppress=True, region=regions['chat_button'])
+            click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
             click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
             if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
                 # Prioritise Corrupt Creatures over Synergy battles
@@ -146,11 +146,11 @@ def team_up():
             # If we've not seen any corrupt group for 5 minutes sometimes autoscroll has stopped working so we do it manually
             if (time.time() - globals()['last_corrupt'] > 300):
                 logger.info('Nothing seen for a while, trying to scroll')
-                swipe(1000, 1500, 1000, 500, 1000)
+                swipe(1000, 1500, 1000, 500, 1000, seconds=2)
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
-        click('teamup/join', seconds=5, region=regions['bottom_third'])
+        click('teamup/join', seconds=5, region=regions['chat_window'])
         if not isVisible('teamup/ready', region=regions['bottom_third']):
             logger.info('Something went wrong, waiting 30s before continuing\n')
             wait(30)
