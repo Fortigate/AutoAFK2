@@ -79,9 +79,6 @@ logger.info('Version: ' + version)
 connect_and_launch(port=config.get('ADVANCED', 'port'))
 waitUntilGameActive()
 
-#TODO
-# Travelogue collection
-
 def dailies():
     if config.getboolean('ACTIVITIES', 'claim_afk'):
         claim_afk_rewards()
@@ -95,10 +92,12 @@ def dailies():
         dream_realm()
     if config.getint('ACTIVITIES', 'arena_battles') > 0:
         arena(config.getint('ACTIVITIES', 'arena_battles'))
-    if config.getboolean('ACTIVITIES', 'claim_afk'):
-        claim_afk_rewards()
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         quests()
+    if config.getboolean('ACTIVITIES', 'noble_path'):
+        noble_path()
+    if config.getboolean('ACTIVITIES', 'claim_events'):
+        claim_events()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
         farm_affinty()
     logger.info('Dailies done!')
@@ -212,8 +211,6 @@ def friend_points_collect():
     clickXY(700, 1800, seconds=2)
     clickXY(850, 300, seconds=2)
     clickXY(420, 50, seconds=2)  # Neutral location for closing reward pop ups etc, should never be an in game button here
-    click('buttons/back', region=regions['back'])
-    click('buttons/back', region=regions['back'])
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Friend Gifts Claimed!\n')
@@ -226,8 +223,6 @@ def mail_connect():
     click('buttons/mail', region=regions['menu_activities'], seconds=2)
     clickXY(750, 1800, seconds=2)
     clickXY(750, 1800, seconds=2)
-    click('buttons/back', region=regions['back'])
-    click('buttons/back', region=regions['back'])
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Mail Claimed!\n')
@@ -243,8 +238,6 @@ def emporium_purchases():
     clickXY(650, 1800, seconds=2)  # purchase
     clickXY(875, 1250, seconds=2)  # diamonds confirm
     click_location('neutral')
-    click('buttons/back2', region=regions['back'])
-    click('buttons/back', region=regions['back'])
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Daily summon card purchased!\n')
@@ -277,8 +270,6 @@ def arena(battles=9):
             while isVisible('labels/tap_to_close', confidence=0.8):
                 click('labels/tap_to_close', seconds=4, suppress=True)
             counter += 1
-        click('buttons/back', region=(50, 1750, 150, 150), seconds=2)
-        click('buttons/back2', region=(50, 1750, 150, 150))
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Arena battles completed!\n')
@@ -302,8 +293,6 @@ def dream_realm():
         while isVisible('labels/tap_to_close'): # Few clicks to clear loot too
             click('labels/tap_to_close', seconds=3, suppress=True)
         logger.info('battle complete!')
-        click('buttons/back')
-        click('buttons/back2')
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Dream Realm completed!\n')
@@ -332,10 +321,6 @@ def quests():
     while isVisible('buttons/collect'):
         click('buttons/collect')
 
-    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2)
-    click('buttons/back', region=(50, 1750, 150, 150), seconds=2)
-    click('buttons/back2', confidence=0.8, region=(40, 1750, 150, 150), seconds=2, suppress=True)
-
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Quests collected!\n')
 
@@ -358,6 +343,41 @@ def farm_affinty(heroes=40):
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Affinity farmed!\n')
+
+def noble_path():
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    logger.info('Collecting noble path')
+    click('buttons/main_menu', region=(900, 1750, 150, 150))
+    click('buttons/noble_path', seconds=2)
+    click('buttons/noble_quests_inactive', seconds=2)
+
+    # Daily
+    if isVisible('buttons/claim_all', click=True):
+        clickXY(1000, 1800)
+
+    # Weekly - TODO next week, idk how it looks when there is something to collect
+    click('buttons/noble_quests_weekly')
+
+    # Epic - TODO, idk how it looks when there is something to collect
+    click('buttons/noble_quests_epic')
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Noble path collected!\n')
+
+def claim_events():
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    logger.info('Claiming event rewards')
+    click('buttons/main_menu', region=(900, 1750, 150, 150))
+    click('buttons/event', seconds=2)
+
+    # All Heroes
+    if isVisible('events/all_heroes', click=True):
+        if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
+            logger.info('All Heroes claimed')
+            click_location('neutral')
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Events claimed!\n')
 
 if args['dailies']:
     logger.info('Running Dailies\n')
