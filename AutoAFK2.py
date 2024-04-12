@@ -68,11 +68,6 @@ connect_and_launch(port=config.get('ADVANCED', 'port'))
 waitUntilGameActive()
 
 def dailies():
-    if config.getboolean('ACTIVITIES', 'claim_events'):
-        claim_events()
-
-    return
-
     if config.getboolean('ACTIVITIES', 'claim_afk'):
         claim_afk_rewards()
     if config.getboolean('ACTIVITIES', 'friend_points'):
