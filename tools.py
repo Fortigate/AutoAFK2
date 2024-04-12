@@ -107,7 +107,7 @@ def returnxy(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale
 # 2.0 will run with 200% of the default wait times
 # This is handy for slower machines where we need to wait for sections/images to load
 def wait(seconds=1):
-    time.sleep(seconds * float(config.get('ADVANCED', 'loading_multiplier')))
+    time.sleep(seconds * config.getfloat('ADVANCED', 'loading_multiplier'))
 
 # If the given image is found, it will click on the center of it, if not returns "No image found"
 # Confidence is how sure we are we have the right image, for animated icons we can lower the value
@@ -145,6 +145,11 @@ def click(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=Fa
         if suppress is not True:
             logger.info('Image:' + image + ' not found!')
         wait(seconds)
+
+# Performs a swipe from X1/Y1 to X2/Y2 at the speed defined in duration (in milliseconds)
+def swipe(x1, y1, x2, y2, duration=100, seconds=1):
+    device.input_swipe(x1, y1, x2, y2, duration)
+    wait(seconds)
 
 # Returns True if the image is found, False if not
 # Confidence value can be reduced for images with animations
