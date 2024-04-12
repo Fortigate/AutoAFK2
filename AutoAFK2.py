@@ -10,7 +10,7 @@ last_synergy = time.time()
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.0.11'
+version = '0.0.13'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -57,6 +57,18 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_exception
 
+# Quick storage for commonly used regions
+regions = {
+    #locate
+    'sunandstars': (770, 40, 100, 100),
+    'main_menu': (900, 1750, 150, 150),
+    'menu_activities': (20, 950, 1050, 800),
+    'back': (50, 1750, 150, 150),
+    'chat_window': (184, 362, 850, 1300),
+    'chat_button': (888, 744, 190, 1000),
+    'chat_selection': (20, 300, 170, 900),
+    'bottom_third': (720, 1280, 360, 640)
+}
 
 # Boot up text
 logger.info('') # Newline for easier log file reading with new sessions
@@ -102,27 +114,28 @@ def team_up():
     start = time.time()
     while 1 == 1:
         # First ensure
-        while not isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-            click('buttons/back', suppress=True)
+        while not isVisible('labels/sunandstars', region=regions['sunandstars']):
+            click('buttons/back', suppress=True, region=regions['back'])
             click_location('neutral')
             wait()
         logger.info('Opening chat')
-        while not isVisible('teamup/join', seconds=1, confidence=0.8):
-            click('teamup/chat', seconds=0, suppress=True)
-            click('teamup/teamup', seconds=0, suppress=True)
-            if isVisible('teamup/join', seconds=1):
+        while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
+            click('teamup/chat', seconds=0, suppress=True, region=regions['chat_button'])
+            click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
+            if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
                 # Prioritise Corrupt Creatures over Synergy battles
                 continue
-            if isVisible('teamup/synergy', seconds=0): # So we don't open the same one twice in a row
-                # logger.info(str(format_timespan(time.time() - globals()['last_synergy'])) + ' since last synergy')
-                x, y = returnxy('teamup/synergy')
-                if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 300):
+            # Synergy battle hero lending is handled here
+            if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
+                x, y = returnxy('teamup/synergy', region=regions['chat_window'])
+                # We wait 3mins between each one else we end up opening and closing the same one repeatadly
+                if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 180):
                     logger.info('Synergy Battle found!')
                     clickXY(x, y + 220)
-                    if isVisible('buttons/back'):
+                    if isVisible('buttons/back', region=regions['back']):
                         clickXY(300, 900)
                         clickXY(650, 1800)
-                        click('buttons/back', suppress=True)
+                        click('buttons/back', suppress=True, region=regions['back'])
                         logger.info('Hero lent\n')
                         globals()['last_synergy'] = time.time()
                         return
@@ -130,36 +143,40 @@ def team_up():
                         logger.info('Something went wrong, returning\n')
                         globals()['last_synergy'] = time.time()
                         return
+            # If we've not seen any corrupt group for 5 minutes sometimes autoscroll has stopped working so we do it manually
+            if (time.time() - globals()['last_corrupt'] > 300):
+                logger.info('Nothing seen for a while, trying to scroll')
+                swipe(1000, 1500, 1000, 500, 1000)
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
-        click('teamup/join', seconds=5)
-        if not isVisible('teamup/ready'):
+        click('teamup/join', seconds=5, region=regions['bottom_third'])
+        if not isVisible('teamup/ready', region=regions['bottom_third']):
             logger.info('Something went wrong, waiting 30s before continuing\n')
             wait(30)
             return
-        click('teamup/ready', seconds=6)
+        click('teamup/ready', seconds=6, region=regions['bottom_third'])
         # logger.info('Readying up in the lobby')
-        while isVisible('teamup/quit', confidence=0.8):
+        while isVisible('teamup/quit', confidence=0.8, region=regions['bottom_third']):
             timer += 1
             if timer > 15:
                 logger.info('Timeout error!\n')
-                click('teamup/quit', seconds=2)
+                click('teamup/quit', seconds=2, region=regions['bottom_third'])
                 clickXY(850, 1250, seconds=4)
                 return
-        while isVisible('teamup/ready_lobby', confidence=0.8):
+        while isVisible('teamup/ready_lobby', confidence=0.8, region=regions['bottom_third']):
             logger.info('Deploying heroes')
             clickXY(120, 1300)
             clickXY(270, 1300)
             clickXY(450, 1300)
-            click('teamup/ready_lobby', confidence=0.8)
-        while not isVisible('labels/tap_to_close', confidence=0.8):
+            click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_third'])
+        while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_third']):
             timer += 1
             if timer > 20:
                 logger.info('Timeout error!\n')
                 click_location('neutral')
                 return
-        click('labels/tap_to_close', confidence=0.8)
+        click('labels/tap_to_close', confidence=0.8, region=regions['bottom_third'])
         timer = 0
         logger.info('Battle complete!\n')
         globals()['last_corrupt'] = time.time()
@@ -170,6 +187,7 @@ def team_up():
 def claim_afk_rewards():
     logger.info('Claiming AFK Rewards')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     clickXY(100, 1800, seconds=4)  # Open AFK Rewards
     clickXY(550, 1400)  # Click Chest
     clickXY(550, 1080)  # Click Collect
@@ -181,6 +199,7 @@ def claim_afk_rewards():
             clickXY(1000, 1800)
 
     clickXY(100, 1800)  # Close
+
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('AFK Rewards Claimed!\n')
 
@@ -188,13 +207,13 @@ def friend_points_collect():
     logger.info('Claiming Friend Gifts')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-    click('buttons/main_menu', region=(900, 1750, 150, 150))
-    click('buttons/friends', region=(30, 1450, 200, 200), seconds=2)
+    click('buttons/main_menu', region=regions['main_menu'])
+    click('buttons/friends', region=regions['menu_activities'], seconds=2)
     clickXY(700, 1800, seconds=2)
     clickXY(850, 300, seconds=2)
     clickXY(420, 50, seconds=2)  # Neutral location for closing reward pop ups etc, should never be an in game button here
-    click('buttons/back', region=(50, 1750, 150, 150))
-    click('buttons/back', region=(50, 1750, 150, 150))
+    click('buttons/back', region=regions['back'])
+    click('buttons/back', region=regions['back'])
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Friend Gifts Claimed!\n')
@@ -203,12 +222,12 @@ def mail_connect():
     logger.info('Claiming Mail')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-    click('buttons/main_menu', region=(900, 1750, 150, 150))
-    click('buttons/mail', region=(240, 1250, 200, 200), seconds=2)
+    click('buttons/main_menu', region=regions['main_menu'])
+    click('buttons/mail', region=regions['menu_activities'], seconds=2)
     clickXY(750, 1800, seconds=2)
     clickXY(750, 1800, seconds=2)
-    click('buttons/back', region=(50, 1750, 150, 150))
-    click('buttons/back', region=(50, 1750, 150, 150))
+    click('buttons/back', region=regions['back'])
+    click('buttons/back', region=regions['back'])
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Mail Claimed!\n')
@@ -217,15 +236,15 @@ def emporium_purchases():
     logger.info('Purchasing daily summon card')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-    click('buttons/main_menu', region=(900, 1750, 150, 150))
-    click('buttons/emporium', region=(850, 1250, 200, 200), seconds=2)
+    click('buttons/main_menu', region=regions['main_menu'])
+    click('buttons/emporium', region=regions['menu_activities'], seconds=2)
     clickXY(100, 700, seconds=2) # guild store
     clickXY(325, 900, seconds=2) # daily card
     clickXY(650, 1800, seconds=2)  # purchase
     clickXY(875, 1250, seconds=2)  # diamonds confirm
     click_location('neutral')
-    click('buttons/back2', region=(50, 1750, 150, 150))
-    click('buttons/back', region=(50, 1750, 150, 150))
+    click('buttons/back2', region=regions['back'])
+    click('buttons/back', region=regions['back'])
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Daily summon card purchased!\n')
