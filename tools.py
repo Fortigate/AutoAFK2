@@ -57,7 +57,7 @@ def get_adb_device(port):
         Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
         return device_name
 
-# Confirms that the game has loaded by checking for the sunandstars icon nex tto the minimap. We press a few buttons to navigate back if needed
+# Confirms that the game has loaded by checking for the sunandstars icon next to the minimap. We press a few buttons to navigate back if needed
 def waitUntilGameActive():
     logger.info('Waiting for game to load..')
     loadingcounter = 0
