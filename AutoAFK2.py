@@ -172,6 +172,9 @@ def claim_afk_rewards():
     clickXY(100, 1800, seconds=4)  # Open AFK Rewards
     clickXY(550, 1400)  # Click Chest
     clickXY(550, 1080)  # Click Collect
+    wait(2) # Wait and claim again to complete daily quest
+    clickXY(550, 1400)  # Click Chest
+    clickXY(550, 1080)  # Click Collect
 
     # Fast rewards
     for _ in range(config.getint('ACTIVITIES', 'fast_rewards')):
@@ -341,6 +344,11 @@ def noble_path():
 
     # Epic - TODO, idk how it looks when there is something to collect
     click('buttons/noble_quests_epic')
+
+    # Travelogue
+    click('buttons/noble_travelogue_inactive')
+    if isVisible('buttons/claim_all', click=True):
+        clickXY(1000, 1800)
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Noble path collected!\n')
