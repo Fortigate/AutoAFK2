@@ -10,7 +10,7 @@ last_synergy = time.time()
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.0.13'
+version = '0.0.15'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -65,9 +65,12 @@ regions = {
     'menu_activities': (20, 950, 1050, 800),
     'back': (50, 1750, 150, 150),
     'chat_window': (184, 362, 850, 1300),
-    'chat_button': (888, 744, 190, 1000),
+    'right_sidebar': (888, 744, 190, 1000),
     'chat_selection': (20, 300, 170, 900),
-    'bottom_third': (720, 1280, 360, 640)
+    'top_third': (0, 0, 1080, 640),
+    'middle_third': (0, 640, 1080, 1280),
+    'bottom_third': (0, 1280, 1080, 1920),
+    'bottom_buttons': (0, 1620, 1080, 300)
 }
 
 # Boot up text
@@ -99,14 +102,8 @@ def dailies():
     if config.getboolean('ACTIVITIES', 'claim_events'):
         claim_events()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
-        farm_affinty()
+        farm_affinity()
     logger.info('Dailies done!')
-
-# To run the task on a loop forever and ever
-# Its in two 1 == 1 loops so we can call return on the main function when it gets stuck and restart it from this function for stability
-def teamup():
-    while 1 == 1:
-        team_up()
 
 def team_up():
     timer = 0
@@ -119,7 +116,7 @@ def team_up():
             wait()
         logger.info('Opening chat')
         while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
-            click('teamup/chat', seconds=0, suppress=True, region=regions['chat_button'])
+            click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
             click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
             if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
                 # Prioritise Corrupt Creatures over Synergy battles
@@ -144,38 +141,39 @@ def team_up():
                         return
             # If we've not seen any corrupt group for 5 minutes sometimes autoscroll has stopped working so we do it manually
             if (time.time() - globals()['last_corrupt'] > 300):
-                logger.info('Nothing seen for a while, trying to scroll')
-                swipe(1000, 1500, 1000, 500, 1000)
+                # logger.info('Nothing seen for a while, trying to scroll')
+                swipe(1000, 1500, 1000, 500, 1000, seconds=2)
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
-        click('teamup/join', seconds=5, region=regions['bottom_third'])
-        if not isVisible('teamup/ready', region=regions['bottom_third']):
+        click('teamup/join', seconds=4, region=regions['chat_window'])
+        # If ready is not visible after clicking join then it's been disbanded etc so we restart
+        if not isVisible('teamup/ready', region=regions['bottom_buttons']):
             logger.info('Something went wrong, waiting 30s before continuing\n')
             wait(30)
             return
-        click('teamup/ready', seconds=6, region=regions['bottom_third'])
-        # logger.info('Readying up in the lobby')
-        while isVisible('teamup/quit', confidence=0.8, region=regions['bottom_third']):
+        click('teamup/ready', seconds=4, region=regions['bottom_buttons'])
+        # If Quit button is visible 15 cycles after readying up then the host is afk etc so we restart
+        while isVisible('teamup/quit', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
             if timer > 15:
                 logger.info('Timeout error!\n')
-                click('teamup/quit', seconds=2, region=regions['bottom_third'])
+                click('teamup/quit', seconds=2, region=regions['bottom_buttons'])
                 clickXY(850, 1250, seconds=4)
                 return
-        while isVisible('teamup/ready_lobby', confidence=0.8, region=regions['bottom_third']):
+        while isVisible('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons']):
             logger.info('Deploying heroes')
             clickXY(120, 1300)
             clickXY(270, 1300)
             clickXY(450, 1300)
-            click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_third'])
-        while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_third']):
+            click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons'], seconds=1)
+        while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
             if timer > 20:
                 logger.info('Timeout error!\n')
-                click_location('neutral')
+                click_location('neutral') # Neutral taps to try and get back to main map if something went wrong
                 return
-        click('labels/tap_to_close', confidence=0.8, region=regions['bottom_third'])
+        click('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons'])
         timer = 0
         logger.info('Battle complete!\n')
         globals()['last_corrupt'] = time.time()
@@ -186,37 +184,48 @@ def team_up():
 def claim_afk_rewards():
     logger.info('Claiming AFK Rewards')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-
     clickXY(100, 1800, seconds=4)  # Open AFK Rewards
+    
     clickXY(550, 1400)  # Click Chest
     clickXY(550, 1080)  # Click Collect
     wait(2) # Wait and claim again to complete daily quest
     clickXY(550, 1400)  # Click Chest
     clickXY(550, 1080)  # Click Collect
 
-    # Fast rewards
-    for _ in range(config.getint('ACTIVITIES', 'fast_rewards')):
-        if isVisible('buttons/fast_rewards', click=True):
-            click('buttons/confirm')
-            clickXY(1000, 1800)
+    if isVisible('buttons/fast_rewards'):
+        clickXY(550, 1400)  # Click Chest
+        clickXY(550, 1080)  # Click Collect
 
-    clickXY(100, 1800)  # Close
+        # Fast rewards
+        for _ in range(config.getint('ACTIVITIES', 'fast_rewards')):
+            if isVisible('buttons/fast_rewards', click=True):
+                click('buttons/confirm')
+                clickXY(1000, 1800)
 
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('AFK Rewards Claimed!\n')
+        clickXY(100, 1800)  # Close
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('AFK Rewards Claimed!\n')
+    else:
+        logger.info('Issue opening AFK Rewards!')
+        recover()
 
 def friend_points_collect():
     logger.info('Claiming Friend Gifts')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-
     click('buttons/main_menu', region=regions['main_menu'])
     click('buttons/friends', region=regions['menu_activities'], seconds=2)
-    clickXY(700, 1800, seconds=2)
-    clickXY(850, 300, seconds=2)
-    clickXY(420, 50, seconds=2)  # Neutral location for closing reward pop ups etc, should never be an in game button here
 
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('Friend Gifts Claimed!\n')
+    if isVisible('labels/friends'):
+        clickXY(700, 1800, seconds=2)
+        clickXY(850, 300, seconds=2)
+        click_location('neutral')
+        click('buttons/back', region=regions['back'])
+        click('buttons/back', region=regions['back'])
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Friend Gifts Claimed!\n')
+    else:
+        logger.info('Issue claiming friends points!')
+        recover()
 
 def mail_connect():
     logger.info('Claiming Mail')
@@ -224,12 +233,19 @@ def mail_connect():
 
     click('buttons/main_menu', region=regions['main_menu'])
     click('buttons/mail', region=regions['menu_activities'], seconds=2)
-    clickXY(750, 1800, seconds=2)
-    clickXY(750, 1800, seconds=2)
 
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('Mail Claimed!\n')
+    if isVisible('labels/friends'):
+        clickXY(750, 1800, seconds=2)
+        clickXY(750, 1800, seconds=2)
+        click('buttons/back', region=regions['back'])
+        click('buttons/back', region=regions['back'])
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Mail Claimed!\n')
+    else:
+        logger.info('Issue claiming Mail!')
+        recover()
 
+# TODO Clean up and optimize
 def emporium_purchases():
     logger.info('Purchasing daily summon card')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -245,6 +261,7 @@ def emporium_purchases():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Daily summon card purchased!\n')
 
+# TODO Clean up and optimize
 def arena(battles=9):
     counter = 0
     logger.info('Battling Arena')
@@ -277,6 +294,7 @@ def arena(battles=9):
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Arena battles completed!\n')
 
+# TODO Clean up and optimize
 def dream_realm():
     logger.info('Battling Dream Realm')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -300,6 +318,7 @@ def dream_realm():
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Dream Realm completed!\n')
 
+# TODO Clean up and optimize
 def quests():
     logger.info('Collecting Quests')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -327,25 +346,31 @@ def quests():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Quests collected!\n')
 
-def farm_affinty(heroes=40):
+def farm_affinity(heroes=40):
     logger.info('Clicking every hero 3 times for +6 affinity')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
     counter = 1
     clickXY(650, 1850, seconds=3) # Open heroes hall
     clickXY(150, 850, seconds=3) # Click top right hero
-    while counter < heroes:
-        clickXY(550, 1000)
-        clickXY(550, 1000)
-        clickXY(550, 1000)
-        clickXY(620, 1800)
-        clickXY(1000, 1100)
-        counter += 1
-        click('buttons/back')
-        click('buttons/back2')
 
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('Affinity farmed!\n')
+    if isVisible('buttons/affinity', region=regions['top_third']):
+        while counter < heroes:
+            if counter % 10 == 0:
+                logger.log('Tapping ' + str(counter) + 'th hero')
+            clickXY(550, 1000)
+            clickXY(550, 1000)
+            clickXY(550, 1000)
+            clickXY(620, 1800)
+            clickXY(1000, 1100)
+            counter += 1
+        click('buttons/back', region=regions['back'], seconds=2)
+        click('buttons/back2', region=regions['back'])
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Affinity farmed!\n')
+    else:
+        logger.info('Something went wrong opening hero affinity!')
+        recover()
 
 def noble_path():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -393,4 +418,6 @@ if args['dailies']:
 
 if args['teamup']:
     logger.info('Starting up team-up farming\n')
-    teamup()
+    farm_affinity()
+    while 1 == 1:
+        team_up()
