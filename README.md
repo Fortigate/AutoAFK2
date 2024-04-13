@@ -14,15 +14,19 @@ Will open chat and join any active Corrupt Creature as a priority, if none are f
 
 Will run these tasks to complete your daily quests:
 
-* Claim AFK Rewards
+* Claim AFK Rewards (twice for Noble Path quest)
 * Collect Friendship Points
 * Collect Mail
 * Purchase a 210 gem summon card from the Guild Store in the Emporium
-* Battle Arena once
+* Battle Arena
+* Battle Dream Realm and collect rewards
 * Collect all:
   * Daily Quests
   * Guild Quests
   * Growth quests
+  * Noble Path
+  * Events (some of them anyway)
+* Click all heroes for 6 affinity a day
   
 
 More functionality and features coming as as when I have energy to add them.
