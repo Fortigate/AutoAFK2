@@ -10,7 +10,7 @@ last_synergy = time.time()
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.0.15'
+version = '0.1.0'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -70,7 +70,9 @@ regions = {
     'top_third': (0, 0, 1080, 640),
     'middle_third': (0, 640, 1080, 1280),
     'bottom_third': (0, 1280, 1080, 1920),
-    'bottom_buttons': (0, 1620, 1080, 300)
+    'bottom_buttons': (0, 1620, 1080, 300),
+    'confirm_deny': (500, 1100, 500, 300),
+    'battle_modes': (20, 580, 1050, 1100)
 }
 
 # Boot up text
@@ -109,7 +111,7 @@ def team_up():
     timer = 0
     start = time.time()
     while 1 == 1:
-        # First ensure
+        # First ensure we're at the main map
         while not isVisible('labels/sunandstars', region=regions['sunandstars']):
             click('buttons/back', suppress=True, region=regions['back'])
             click_location('neutral')
@@ -140,9 +142,9 @@ def team_up():
                         globals()['last_synergy'] = time.time()
                         return
             # If we've not seen any corrupt group for 5 minutes sometimes autoscroll has stopped working so we do it manually
-            if (time.time() - globals()['last_corrupt'] > 300):
-                # logger.info('Nothing seen for a while, trying to scroll')
-                swipe(1000, 1500, 1000, 500, 1000, seconds=2)
+            # if (time.time() - globals()['last_corrupt'] > 300):
+            #     # logger.info('Nothing seen for a while, trying to scroll')
+            swipe(1000, 1500, 1000, 500, 500)
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
@@ -167,6 +169,7 @@ def team_up():
             clickXY(270, 1300)
             clickXY(450, 1300)
             click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons'], seconds=1)
+            continue
         while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
             if timer > 20:
@@ -199,7 +202,7 @@ def claim_afk_rewards():
         # Fast rewards
         for _ in range(config.getint('ACTIVITIES', 'fast_rewards')):
             if isVisible('buttons/fast_rewards', click=True):
-                click('buttons/confirm')
+                click('buttons/confirm', suppress=True)
                 clickXY(1000, 1800)
 
         clickXY(100, 1800)  # Close
@@ -212,6 +215,7 @@ def claim_afk_rewards():
 def friend_points_collect():
     logger.info('Claiming Friend Gifts')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
     click('buttons/main_menu', region=regions['main_menu'])
     click('buttons/friends', region=regions['menu_activities'], seconds=2)
 
@@ -234,7 +238,7 @@ def mail_connect():
     click('buttons/main_menu', region=regions['main_menu'])
     click('buttons/mail', region=regions['menu_activities'], seconds=2)
 
-    if isVisible('labels/friends'):
+    if isVisible('labels/mail'):
         clickXY(750, 1800, seconds=2)
         clickXY(750, 1800, seconds=2)
         click('buttons/back', region=regions['back'])
@@ -245,7 +249,6 @@ def mail_connect():
         logger.info('Issue claiming Mail!')
         recover()
 
-# TODO Clean up and optimize
 def emporium_purchases():
     logger.info('Purchasing daily summon card')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -253,98 +256,139 @@ def emporium_purchases():
     click('buttons/main_menu', region=regions['main_menu'])
     click('buttons/emporium', region=regions['menu_activities'], seconds=2)
     clickXY(100, 700, seconds=2) # guild store
-    clickXY(325, 900, seconds=2) # daily card
-    clickXY(650, 1800, seconds=2)  # purchase
-    clickXY(875, 1250, seconds=2)  # diamonds confirm
-    click_location('neutral')
+    if isVisible('labels/emporium_guild', region=regions['top_third']):
+        if isVisible('emporium/guild_summoncard'):
+            click('emporium/guild_summoncard', region=regions['middle_third'])
+            click('buttons/purchase', region=regions['bottom_buttons'])
+            click('buttons/confirm', region=regions['confirm_deny'], seconds=2)
+            click_location('neutral')
+        else:
+            logger.info('Daily card already purchased!')
+        click('buttons/back2', region=regions['back'])
+        click('buttons/back', region=regions['back'])
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Daily summon card purchased!\n')
+    else:
+        logger.info('Issue purchasing summon card!')
+        recover()
 
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('Daily summon card purchased!\n')
-
-# TODO Clean up and optimize
 def arena(battles=9):
+    timeout = 0
     counter = 0
     logger.info('Battling Arena')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
     clickXY(450, 1825)
     if isVisible('labels/battle_modes'):
-        click('buttons/arena', seconds=2)
+        click('buttons/arena', region=regions['battle_modes'], seconds=2)
         click_location('neutral')
         click_location('neutral')
         while counter < battles:
             logger.info('Fighting Arena Battle ' + str(counter+1) + ' of ' + str(battles))
-            click('buttons/challenge', seconds=3, retry=5, confidence=0.8)
-            if isVisible('buttons/confirm'):
-                logger.info('Purchase challenge pop-up detected, confirming')
-                click('buttons/confirm')
-                click('buttons/challenge', seconds=3)
-            clickXY(180, 1450, seconds=5)
-            click('buttons/battle')
-            while not isVisible('labels/tap_to_close', confidence=0.8):
-                wait()
+            click('buttons/challenge', region=regions['bottom_buttons'], seconds=3, retry=5, confidence=0.8)
+            if isVisible('buttons/confirm', region=regions['confirm_deny']):
+                # logger.info('Purchase challenge pop-up detected, confirming')
+                click('buttons/confirm', region=regions['confirm_deny'])
+                click('buttons/challenge', seconds=3, region=regions['bottom_buttons'])
+            clickXY(180, 1450, seconds=5) # Leftmost opponent
+            click('buttons/battle', region=regions['bottom_buttons'])
+            while not isVisible('labels/tap_to_close', region=regions['bottom_buttons'], confidence=0.8):
                 # Clear promotion screen if visible
-                if isVisible('labels/arena_promote'):
+                if isVisible('labels/arena_promote', region=regions['bottom_third']):
                     clickXY(550, 1800)
+                timeout += 1
+                if timeout > 30:
+                    logger.info('Arena timeout error\n')
+                    recover()
+                    return
             logger.info('Battle complete')
-            while isVisible('labels/tap_to_close', confidence=0.8):
-                click('labels/tap_to_close', seconds=4, suppress=True)
+            while isVisible('labels/tap_to_close', region=regions['bottom_buttons'], confidence=0.8):
+                click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
             counter += 1
+            timer = 0
+    else:
+        logger.info('Issue opening Arena!')
+        recover()
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Arena battles completed!\n')
 
-# TODO Clean up and optimize
 def dream_realm():
+    timer = 0
     logger.info('Battling Dream Realm')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-    clickXY(450, 1825)
-    if isVisible('labels/battle_modes'):
-        click('buttons/dream_realm', seconds=2)
+    clickXY(450, 1825, seconds=3)
+    click('buttons/dream_realm', region=regions['battle_modes'], seconds=3)
+    # First collect rewards
+    if isVisible('buttons/battle', region=regions['bottom_buttons']):
+        logger.info('Collecting previous round rewards')
+        clickXY(1020, 280, seconds=5)
         clickXY(1020, 280, seconds=2)
-        clickXY(1020, 280, seconds=2)
-        clickXY(550, 1800)
-        click('buttons/back', seconds=3)
-        clickXY(550, 1800, seconds=4) # Battle
-        clickXY(550, 1800) # Battle begin from hero selection
+        clickXY(550, 1800, seconds=2)
+        click('buttons/back', region=regions['back'], seconds=3)
+    else:
+        logger.info('issue collecting rewards!')
+        recover()
+        return
+    # Then attempt a single battle
+    if isVisible('buttons/battle', region=regions['bottom_buttons']):
+        logger.info('Battling Dream Realm')
+        click('buttons/battle', region=regions['bottom_buttons'], seconds=5)
+        click('buttons/battle', region=regions['bottom_buttons'], seconds=3)
         while not isVisible('labels/tap_to_close'):
             wait()
             click_location('neutral')
-        while isVisible('labels/tap_to_close'): # Few clicks to clear loot too
-            click('labels/tap_to_close', seconds=3, suppress=True)
-        logger.info('battle complete!')
-
+            timer += 1
+            if timer > 30:
+                logger.info('Dream Realm timeout!')
+                recover()
+                return
+        while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
+            click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=3, suppress=True)
+        logger.info('Battle complete!')
+        click('buttons/back', region=regions['back'])
+        click('buttons/back2', region=regions['back'])
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Dream Realm completed!\n')
+    else:
+        logger.info('Issue collecting rewards!')
+        recover()
+        return
 
-# TODO Clean up and optimize
 def quests():
     logger.info('Collecting Quests')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-    click('buttons/main_menu', region=(900, 1750, 150, 150))
-    click('buttons/quests', seconds=3)
+    click('buttons/main_menu', region=regions['main_menu'])
+    click('buttons/quests', region=regions['menu_activities'],  seconds=3)
+    clickXY(300, 1800, seconds=2)# Daily quests
 
-    # Daily quests
-    clickXY(300, 1800, seconds=2)
-    if isVisible('buttons/quick_collect'):
-        click('buttons/quick_collect', seconds=2)
-        clickXY(900, 200, seconds=2)  # collect dailies
-        click_location('neutral')
+    if isVisible('labels/daily_quests'):
+        if isVisible('buttons/quick_collect', region=regions['bottom_third']):
+            click('buttons/quick_collect', region=regions['bottom_third'], seconds=2)
+            clickXY(900, 200, seconds=2)  # collect dailies
+            click_location('neutral')
 
-    # Guild quests
-    clickXY(500, 1800, seconds=2)
-    while isVisible('buttons/collect'):
-        click('buttons/collect')
+        # Guild quests
+        clickXY(500, 1800, seconds=2)
+        while isVisible('buttons/collect'):
+            click('buttons/collect')
 
-    # Growth Trials
-    clickXY(950, 1800, seconds=2)
-    while isVisible('buttons/collect'):
-        click('buttons/collect')
+        # Growth Trials
+        clickXY(950, 1800, seconds=2)
+        while isVisible('buttons/collect'):
+            click('buttons/collect')
 
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('Quests collected!\n')
+        click('buttons/back2', region=regions['back'])
+        click('buttons/back', region=regions['back'])
+
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Quests collected!\n')
+    else:
+        logger.info('Issue collecting quests!')
+        recover()
+        return
 
 def farm_affinity(heroes=40):
     logger.info('Clicking every hero 3 times for +6 affinity')
@@ -357,7 +401,7 @@ def farm_affinity(heroes=40):
     if isVisible('buttons/affinity', region=regions['top_third']):
         while counter < heroes:
             if counter % 10 == 0:
-                logger.log('Tapping ' + str(counter) + 'th hero')
+                logger.info('Tapping ' + str(counter) + 'th hero')
             clickXY(550, 1000)
             clickXY(550, 1000)
             clickXY(550, 1000)
@@ -375,49 +419,55 @@ def farm_affinity(heroes=40):
 def noble_path():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     logger.info('Collecting noble path')
-    click('buttons/main_menu', region=(900, 1750, 150, 150))
-    click('buttons/noble_path', seconds=2)
-    click('buttons/noble_quests_inactive', seconds=2)
+    click('buttons/main_menu', region=regions['main_menu'])
+    click('buttons/noble_path', region=regions['menu_activities'], seconds=2)
 
-    # Daily
-    if isVisible('buttons/claim_all', click=True):
-        clickXY(1000, 1800)
+    if isVisible('buttons/noble_quests_inactive', region=regions['bottom_third']):
+        click('buttons/noble_quests_inactive', region=regions['bottom_third'], seconds=2)
 
-    # Weekly - TODO next week, idk how it looks when there is something to collect
-    click('buttons/noble_quests_weekly')
+        # Daily
+        if isVisible('buttons/claim_all', click=True):
+            clickXY(1000, 1800)
 
-    # Epic - TODO, idk how it looks when there is something to collect
-    click('buttons/noble_quests_epic')
+        # Weekly - TODO next week, idk how it looks when there is something to collect
+        click('buttons/noble_quests_weekly')
 
-    # Travelogue
-    click('buttons/noble_travelogue_inactive')
-    if isVisible('buttons/claim_all', click=True):
-        clickXY(1000, 1800)
+        # Epic - TODO, idk how it looks when there is something to collect
+        click('buttons/noble_quests_epic')
 
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('Noble path collected!\n')
+        # Travelogue
+        click('buttons/noble_travelogue_inactive', region=regions['bottom_third'])
+        if isVisible('buttons/claim_all', click=True):
+            clickXY(1000, 1800)
+
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Noble path collected!\n')
+        else:
+            logger.info('Something went wrong collecting Noble Path!')
+            recover()
 
 def claim_events():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     logger.info('Claiming event rewards')
-    click('buttons/main_menu', region=(900, 1750, 150, 150))
-    click('buttons/event', seconds=2)
+    click('buttons/main_menu', region=regions['main_menu'], seconds=3)
+    click('buttons/event', region=regions['menu_activities'], seconds=3)
 
     # All Heroes
     if isVisible('events/all_heroes', click=True):
         if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
             logger.info('All Heroes claimed')
             click_location('neutral')
-
+    click('buttons/back', region=regions['back'])
+    click('buttons/back', region=regions['back'])
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
+# Handle launch arguments
 if args['dailies']:
     logger.info('Running Dailies\n')
     dailies()
 
 if args['teamup']:
     logger.info('Starting up team-up farming\n')
-    farm_affinity()
     while 1 == 1:
         team_up()

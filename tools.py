@@ -214,8 +214,6 @@ def return_pixel_colour(x, y, c, seconds=1):
     return screenshot[y, x, c]
 
 def recover(count=3):
-    timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
-    save_screenshot('recovery_' + timestamp)
     timer = 0
     if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
         return True
@@ -225,6 +223,8 @@ def recover(count=3):
         click_location('neutral')
         timer += 1
         if timer > count:
+            timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+            save_screenshot('recovery_' + timestamp)
             return False
             exit()
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
