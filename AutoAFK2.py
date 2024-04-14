@@ -6,11 +6,11 @@ from tools import * # Includes logging so we don't import here also
 
 # Global variables for tracking time passed between team-up activities
 global last_synergy
-last_synergy = time.time()
+last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before opening the first
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.1'
+version = '0.1.2'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -121,6 +121,8 @@ def team_up():
             click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
             isVisible('buttons/confirm', region=regions['confirm_deny'], click=True) # to catch 'Reconnect to chat?'
             click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
+            # Sometimes autoscroll breaks after a while so we do it manually each check
+            swipe(1000, 1500, 1000, 500, 500)
             if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
                 # Prioritise Corrupt Creatures over Synergy battles
                 continue
@@ -128,7 +130,7 @@ def team_up():
             if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
                 x, y = returnxy('teamup/synergy', region=regions['chat_window'])
                 # We wait 3mins between each one else we end up opening and closing the same one repeatadly
-                if x is not None: # Sometimes the button is gone when we run returnxy() and Nonetype crashes the bot
+                if x != 0: # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
                     if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 180):
                         logger.info('Synergy Battle found!')
                         clickXY(x, y + 220)
@@ -146,8 +148,6 @@ def team_up():
                 else:
                     logger.info('Synergy button gone!')
                     return
-            # Sometimes autoscroll breaks after a while so we do it manually each check
-            swipe(1000, 1500, 1000, 500, 500)
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
@@ -185,7 +185,6 @@ def team_up():
         globals()['last_corrupt'] = time.time()
         wait(3)
         return
-    team_up()
 
 def claim_afk_rewards():
     logger.info('Claiming AFK Rewards')
@@ -302,6 +301,8 @@ def arena(battles=9):
                 timeout += 1
                 if timeout > 30:
                     logger.info('Arena timeout error\n')
+                    timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+                    save_screenshot('arena_timeout_' + timestamp)
                     recover()
                     return
             logger.info('Battle complete')
@@ -370,9 +371,11 @@ def quests():
     if isVisible('labels/daily_quests'):
         if isVisible('buttons/quick_collect', region=regions['bottom_third']):
             click('buttons/quick_collect', region=regions['bottom_third'], seconds=2)
-            # TODO Option to not collect daily rewards
+        if config.getboolean('ADVANCED', 'collect_daily_rewards') is True:
             clickXY(900, 200, seconds=2)  # collect dailies
             click_location('neutral')
+        else:
+            logger.info('Skipping daily quest rewards collection')
 
         # Guild quests
         clickXY(500, 1800, seconds=2)

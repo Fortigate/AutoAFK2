@@ -101,7 +101,7 @@ def returnxy(image, confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
         x, y, w, h = result
         return x, y
     else:
-        return None
+        return 0, 0 # Prevents NoneType errors when unpacking if we don't find it
 
 
 # Wait command, default 1 second
