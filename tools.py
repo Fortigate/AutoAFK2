@@ -84,14 +84,15 @@ def clickXY(x, y, seconds=1):
     wait(seconds)
 
 # Back button/neutral location etc can be called by name to make it a bit cleaner
-def click_location(location):
+def click_location(location, seconds=1):
     locations = {
         'neutral': (420, 50)
     }
 
     clickXY(locations[location][0], locations[location][1])
+    wait(seconds)
 
-def returnxy(image, confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
+def returnxy(image,confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
     screenshot = getFrame()
 
     search = Image.open(os.path.join(cwd, 'img', image + '.png'))
