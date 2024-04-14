@@ -10,7 +10,7 @@ last_synergy = time.time()
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.0'
+version = '0.1.1'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -119,6 +119,7 @@ def team_up():
         logger.info('Opening chat')
         while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
             click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
+            isVisible('buttons/confirm', region=regions['confirm_deny'], click=True) # to catch 'Reconnect to chat?'
             click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
             if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
                 # Prioritise Corrupt Creatures over Synergy battles
@@ -127,23 +128,25 @@ def team_up():
             if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
                 x, y = returnxy('teamup/synergy', region=regions['chat_window'])
                 # We wait 3mins between each one else we end up opening and closing the same one repeatadly
-                if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 180):
-                    logger.info('Synergy Battle found!')
-                    clickXY(x, y + 220)
-                    if isVisible('buttons/back', region=regions['back']):
-                        clickXY(300, 900)
-                        clickXY(650, 1800)
-                        click('buttons/back', suppress=True, region=regions['back'])
-                        logger.info('Hero lent\n')
-                        globals()['last_synergy'] = time.time()
-                        return
-                    else:
-                        logger.info('Something went wrong, returning\n')
-                        globals()['last_synergy'] = time.time()
-                        return
-            # If we've not seen any corrupt group for 5 minutes sometimes autoscroll has stopped working so we do it manually
-            # if (time.time() - globals()['last_corrupt'] > 300):
-            #     # logger.info('Nothing seen for a while, trying to scroll')
+                if x is not None: # Sometimes the button is gone when we run returnxy() and Nonetype crashes the bot
+                    if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 180):
+                        logger.info('Synergy Battle found!')
+                        clickXY(x, y + 220)
+                        if isVisible('buttons/back', region=regions['back']):
+                            clickXY(300, 900)
+                            clickXY(650, 1800)
+                            click('buttons/back', suppress=True, region=regions['back'])
+                            logger.info('Hero lent\n')
+                            globals()['last_synergy'] = time.time()
+                            return
+                        else:
+                            logger.info('Something went wrong, returning\n')
+                            globals()['last_synergy'] = time.time()
+                            return
+                else:
+                    logger.info('Synergy button gone!')
+                    return
+            # Sometimes autoscroll breaks after a while so we do it manually each check
             swipe(1000, 1500, 1000, 500, 500)
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
@@ -169,7 +172,7 @@ def team_up():
             clickXY(270, 1300)
             clickXY(450, 1300)
             click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons'], seconds=1)
-            continue
+            continue # Continue otherwise if we miss a button we loop here until battle starts
         while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
             if timer > 20:
@@ -367,6 +370,7 @@ def quests():
     if isVisible('labels/daily_quests'):
         if isVisible('buttons/quick_collect', region=regions['bottom_third']):
             click('buttons/quick_collect', region=regions['bottom_third'], seconds=2)
+            # TODO Option to not collect daily rewards
             clickXY(900, 200, seconds=2)  # collect dailies
             click_location('neutral')
 

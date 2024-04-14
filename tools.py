@@ -100,7 +100,9 @@ def returnxy(image,confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
 
     if result != None:
         x, y, w, h = result
-        return (x, y)
+        return x, y
+    else:
+        return None
 
 
 # Wait command, default 1 second
