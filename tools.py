@@ -91,7 +91,7 @@ def click_location(location):
 
     clickXY(locations[location][0], locations[location][1])
 
-def returnxy(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
+def returnxy(image, confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
     screenshot = getFrame()
 
     search = Image.open(os.path.join(cwd, 'img', image + '.png'))
@@ -99,7 +99,9 @@ def returnxy(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale
 
     if result != None:
         x, y, w, h = result
-        return (x, y)
+        return x, y
+    else:
+        return None
 
 
 # Wait command, default 1 second
