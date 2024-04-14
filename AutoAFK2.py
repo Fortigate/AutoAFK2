@@ -426,7 +426,7 @@ def farm_affinity(heroes=40):
 def noble_path():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     logger.info('Collecting noble path')
-    click('buttons/main_menu', region=regions['main_menu'])
+    click('buttons/main_menu', region=regions['main_menu'], seconds=2)
     click('buttons/noble_path', region=regions['menu_activities'], seconds=2)
 
     if isVisible('buttons/noble_quests_inactive', region=regions['bottom_third']):
