@@ -6,11 +6,11 @@ from tools import * # Includes logging so we don't import here also
 
 # Global variables for tracking time passed between team-up activities
 global last_synergy
-last_synergy = time.time()
+last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before opening the first
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.1'
+version = '0.1.2'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -69,8 +69,8 @@ regions = {
     'right_sidebar': (888, 744, 190, 1000),
     'chat_selection': (20, 300, 170, 900),
     'top_third': (0, 0, 1080, 640),
-    'middle_third': (0, 640, 1080, 1280),
-    'bottom_third': (0, 1280, 1080, 1920),
+    'middle_third': (0, 640, 1080, 640),
+    'bottom_third': (0, 1280, 1080, 640),
     'bottom_buttons': (0, 1620, 1080, 300),
     'confirm_deny': (500, 1100, 500, 300),
     'battle_modes': (20, 580, 1050, 1100)
@@ -122,6 +122,8 @@ def team_up():
             click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
             isVisible('buttons/confirm', region=regions['confirm_deny'], click=True) # to catch 'Reconnect to chat?'
             click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
+            # Sometimes autoscroll breaks after a while so we do it manually each check
+            swipe(1000, 1500, 1000, 500, 500)
             if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
                 # Prioritise Corrupt Creatures over Synergy battles
                 continue
@@ -129,7 +131,7 @@ def team_up():
             if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
                 x, y = returnxy('teamup/synergy', region=regions['chat_window'])
                 # We wait 3mins between each one else we end up opening and closing the same one repeatadly
-                if x is not None: # Sometimes the button is gone when we run returnxy() and Nonetype crashes the bot
+                if x != 0: # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
                     if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 180):
                         logger.info('Synergy Battle found!')
                         clickXY(x, y + 220)
@@ -147,12 +149,10 @@ def team_up():
                 else:
                     logger.info('Synergy button gone!')
                     return
-            # Sometimes autoscroll breaks after a while so we do it manually each check
-            swipe(1000, 1500, 1000, 500, 500)
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
-        click('teamup/join', seconds=4, region=regions['chat_window'])
+        click('teamup/join', seconds=4, confidence=0.8, region=regions['chat_window'])
         # If ready is not visible after clicking join then it's been disbanded etc so we restart
         if not isVisible('teamup/ready', region=regions['bottom_buttons']):
             logger.info('Something went wrong, waiting 30s before continuing\n')
@@ -186,7 +186,6 @@ def team_up():
         globals()['last_corrupt'] = time.time()
         wait(3)
         return
-    team_up()
 
 def claim_afk_rewards():
     logger.info('Claiming AFK Rewards')
@@ -285,6 +284,9 @@ def arena(battles=9):
     clickXY(450, 1825)
     if isVisible('labels/battle_modes'):
         click('buttons/arena', region=regions['battle_modes'], seconds=2)
+        if isVisible('labels/weekly_arena_rewards', region=regions['middle_third']):
+            logger.info('Weekly Arena rewards found!')
+            clickXY(550, 1800)
         click_location('neutral')
         click_location('neutral')
         while counter < battles:
@@ -294,15 +296,17 @@ def arena(battles=9):
                 # logger.info('Purchase challenge pop-up detected, confirming')
                 click('buttons/confirm', region=regions['confirm_deny'])
                 click('buttons/challenge', seconds=3, region=regions['bottom_buttons'])
-            clickXY(180, 1450, seconds=5) # Leftmost opponent
+            clickXY(180, 1450, seconds=6) # Leftmost opponent
             click('buttons/battle', region=regions['bottom_buttons'])
             while not isVisible('labels/tap_to_close', region=regions['bottom_buttons'], confidence=0.8):
-                # Clear promotion screen if visible
+                # Clear promotion screen if visible (not sure this does anything with while isVisible loop at the end covering the case)
                 if isVisible('labels/arena_promote', region=regions['bottom_third']):
                     clickXY(550, 1800)
                 timeout += 1
-                if timeout > 30:
+                if timeout > 40: # Should be about 10 seconds longer than a full fight at 2x
                     logger.info('Arena timeout error\n')
+                    timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+                    save_screenshot('arena_timeout_' + timestamp)
                     recover()
                     return
             logger.info('Battle complete')
@@ -349,7 +353,7 @@ def dream_realm():
                 recover()
                 return
         while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
-            click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=3, suppress=True)
+            click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
         logger.info('Battle complete!')
         click('buttons/back', region=regions['back'])
         click('buttons/back2', region=regions['back'])
@@ -371,9 +375,11 @@ def quests():
     if isVisible('labels/daily_quests'):
         if isVisible('buttons/quick_collect', region=regions['bottom_third']):
             click('buttons/quick_collect', region=regions['bottom_third'], seconds=2)
-            # TODO Option to not collect daily rewards
+        if config.getboolean('ADVANCED', 'collect_daily_rewards') is True:
             clickXY(900, 200, seconds=2)  # collect dailies
             click_location('neutral')
+        else:
+            logger.info('Skipping daily quest rewards collection')
 
         # Guild quests
         clickXY(500, 1800, seconds=2)
