@@ -435,15 +435,9 @@ def noble_path():
     if isVisible('buttons/noble_quests_inactive', region=regions['bottom_third']):
         click('buttons/noble_quests_inactive', region=regions['bottom_third'], seconds=2)
 
-        # Daily
+        # This will claim quests in all tabs
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
-
-        # Weekly - TODO next week, idk how it looks when there is something to collect
-        click('buttons/noble_quests_weekly')
-
-        # Epic - TODO, idk how it looks when there is something to collect
-        click('buttons/noble_quests_epic')
 
         # Travelogue
         click('buttons/noble_travelogue_inactive', region=regions['bottom_third'])
