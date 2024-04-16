@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--teamup", action = 'store_true', help = "Run the Team-up function")
 parser.add_argument("-d", "--dailies", action = 'store_true', help = "Run the Dailies function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
+parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
 
 # Work out which config file we're reading/writing to/from
@@ -461,6 +462,18 @@ def claim_events():
         logger.info('Events claimed!\n')
 
 # Handle launch arguments
+
+if args['forceprint']: # Define a custom logging handler that duplicates log messages to stdout
+    class DuplicatedStdoutHandler(logging.StreamHandler):
+        def emit(self, record):
+            print(self.format(record))
+
+    stdout_handler = DuplicatedStdoutHandler()
+    stdout_handler.setLevel(logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.addHandler(stdout_handler)
+    logger.propagate = False
+
 if args['dailies']:
     logger.info('Running Dailies\n')
     dailies()
@@ -469,3 +482,5 @@ if args['teamup']:
     logger.info('Starting up team-up farming\n')
     while 1 == 1:
         team_up()
+
+
