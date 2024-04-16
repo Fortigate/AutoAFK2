@@ -68,8 +68,8 @@ regions = {
     'right_sidebar': (888, 744, 190, 1000),
     'chat_selection': (20, 300, 170, 900),
     'top_third': (0, 0, 1080, 640),
-    'middle_third': (0, 640, 1080, 1280),
-    'bottom_third': (0, 1280, 1080, 1920),
+    'middle_third': (0, 640, 1080, 640),
+    'bottom_third': (0, 1280, 1080, 640),
     'bottom_buttons': (0, 1620, 1080, 300),
     'confirm_deny': (500, 1100, 500, 300),
     'battle_modes': (20, 580, 1050, 1100)
@@ -151,7 +151,7 @@ def team_up():
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
-        click('teamup/join', seconds=4, region=regions['chat_window'])
+        click('teamup/join', seconds=4, confidence=0.8, region=regions['chat_window'])
         # If ready is not visible after clicking join then it's been disbanded etc so we restart
         if not isVisible('teamup/ready', region=regions['bottom_buttons']):
             logger.info('Something went wrong, waiting 30s before continuing\n')
@@ -283,6 +283,9 @@ def arena(battles=9):
     clickXY(450, 1825)
     if isVisible('labels/battle_modes'):
         click('buttons/arena', region=regions['battle_modes'], seconds=2)
+        if isVisible('labels/weekly_arena_rewards', region=regions['middle_third']):
+            logger.info('Weekly Arena rewards found!')
+            clickXY(550, 1800)
         click_location('neutral')
         click_location('neutral')
         while counter < battles:
@@ -292,14 +295,14 @@ def arena(battles=9):
                 # logger.info('Purchase challenge pop-up detected, confirming')
                 click('buttons/confirm', region=regions['confirm_deny'])
                 click('buttons/challenge', seconds=3, region=regions['bottom_buttons'])
-            clickXY(180, 1450, seconds=5) # Leftmost opponent
+            clickXY(180, 1450, seconds=6) # Leftmost opponent
             click('buttons/battle', region=regions['bottom_buttons'])
             while not isVisible('labels/tap_to_close', region=regions['bottom_buttons'], confidence=0.8):
-                # Clear promotion screen if visible
+                # Clear promotion screen if visible (not sure this does anything with while isVisible loop at the end covering the case)
                 if isVisible('labels/arena_promote', region=regions['bottom_third']):
                     clickXY(550, 1800)
                 timeout += 1
-                if timeout > 30:
+                if timeout > 40: # Should be about 10 seconds longer than a full fight at 2x
                     logger.info('Arena timeout error\n')
                     timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
                     save_screenshot('arena_timeout_' + timestamp)
@@ -349,7 +352,7 @@ def dream_realm():
                 recover()
                 return
         while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
-            click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=3, suppress=True)
+            click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
         logger.info('Battle complete!')
         click('buttons/back', region=regions['back'])
         click('buttons/back2', region=regions['back'])
