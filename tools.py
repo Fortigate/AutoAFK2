@@ -5,7 +5,8 @@ import io
 import scrcpy
 import numpy as np
 import logging
-from pyscreeze import locate
+import sys
+from pyscreeze import locate, locateAll
 from PIL import Image
 from subprocess import Popen, PIPE
 from ppadb.client import Client
@@ -72,7 +73,7 @@ def waitUntilGameActive():
         timeoutcounter += 1
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
             loadingcounter += 1
-        if timeoutcounter > 30:  # Long so patching etc doesn't lead to timeout
+        if timeoutcounter > 30:  # This is nearly 4 minutes currently
             logger.info('Timed out while loading!')
             save_screenshot('timeout')
             exit()
@@ -92,7 +93,7 @@ def click_location(location, seconds=1):
     clickXY(locations[location][0], locations[location][1])
     wait(seconds)
 
-def returnxy(image,confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
+def returnxy(image, confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
     screenshot = getFrame()
 
     search = Image.open(os.path.join(cwd, 'img', image + '.png'))
@@ -118,7 +119,7 @@ def wait(seconds=1):
 # Seconds is time to wait after clicking the image
 # Retry will try and find the image x number of times, useful for animated or covered buttons, or to make sure the button is not skipped
 # Suppress will disable warnings, sometimes we don't need to know if a button isn't found
-def click(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
+def click(image, confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
     counter = 0
     screenshot = getFrame()
 
@@ -149,6 +150,41 @@ def click(image,confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=Fa
         if suppress is not True:
             logger.info('Image:' + image + ' not found!')
         wait(seconds)
+
+# Pyscreeze's locate() searchs top down, sometimes we want to click the last found image (I.E the latest join button in chat)
+def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
+    counter = 0
+    screenshot = getFrame()
+
+    search = Image.open(os.path.join(cwd, 'img', image + '.png'))
+    result = locateAll(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
+    if result == None and retry != 1:
+        while counter < retry:
+            screenshot = getFrame()
+            result = locate(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
+            if result != None:
+                x, y, w, h = result
+                x_center = round(x + w / 2)
+                y_center = round(y + h / 2)
+                device.input_tap(x_center, y_center)
+                wait(seconds)
+                return
+            if suppress is not True:
+                logger.info('Retrying ' + image + ' search: ' + str(counter+1) + '/' + str(retry))
+            counter = counter + 1
+            wait(1)
+    elif result != None:
+        list_results = list(result)
+        x, y, w, h = list_results[-1]
+        x_center = round(x + w/2)
+        y_center = round(y + h/2)
+        device.input_tap(x_center, y_center)
+        wait(seconds)
+    else:
+        if suppress is not True:
+            logger.info('Image:' + image + ' not found!')
+        wait(seconds)
+
 
 # Performs a swipe from X1/Y1 to X2/Y2 at the speed defined in duration (in milliseconds)
 def swipe(x1, y1, x2, y2, duration=100, seconds=1):
@@ -247,8 +283,9 @@ def safe_open_and_close(name, state):
             logger.debug(name + ' completed successfully!')
             return True
         else:
-            logger.info('Issue closing ' + name + ', exiting.')
-            exit()
+            timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+            save_screenshot(name + '_close_error_' + timestamp)
+            logger.info('Issue closing ' + name + '.')
 
 # Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
 def get_connected_device():

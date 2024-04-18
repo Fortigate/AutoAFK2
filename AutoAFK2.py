@@ -10,7 +10,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.2'
+version = '0.1.5'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -151,7 +151,7 @@ def team_up():
         duration = time.time() - start
         logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
-        click('teamup/join', seconds=4, confidence=0.8, region=regions['chat_window'])
+        click_last('teamup/join', seconds=4, confidence=0.8, region=regions['chat_window'])
         # If ready is not visible after clicking join then it's been disbanded etc so we restart
         if not isVisible('teamup/ready', region=regions['bottom_buttons']):
             logger.info('Something went wrong, waiting 30s before continuing\n')
@@ -168,11 +168,12 @@ def team_up():
                 return
         while isVisible('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons']):
             logger.info('Deploying heroes')
+            wait()
             clickXY(120, 1300)
             clickXY(270, 1300)
             clickXY(450, 1300)
-            click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons'], seconds=1)
-            continue # Continue otherwise if we miss a button we loop here until battle starts
+            click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons'])
+            break # Break loop otherwise if we miss a button we loop here until battle starts
         while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
             if timer > 20:
