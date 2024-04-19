@@ -17,43 +17,56 @@ cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
 config = configparser.ConfigParser()
 adb = Client(host="127.0.0.1", port=5037)
 global device
+global connect_attempts
+connect_attempts = 1
 
 def connect_and_launch(port):
     global device
-    adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
 
     if not get_connected_device():
-        # Fire up ADB and connect using the port in settings.ini
-        Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
-        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
-        wait(2)
         device = adb.device(get_adb_device(port))
-        
-        if device is not None:
-            logger.info('Device ' + str(device.serial) + " connected successfully")
-        else:
-            logger.info('No device found!')
-            exit(1)
     else:
         device = get_connected_device()
 
-    # Get scrcpy running
-    scrcpyClient = scrcpy.Client(device=device.serial)
-    scrcpyClient.max_fps = 5
-    scrcpyClient.bitrate = 16000000
-    scrcpyClient.start(daemon_threaded=True)
-    setattr(device, 'srccpy', scrcpyClient)
+    # After getting device run a test echo command to make sure the device is active and catch any errors
+    try:
+        device.shell('test')
+    except Exception as e:
+        logger.info('Connection error:')
+        logger.info(e)
+        while connect_attempts < 3:
+            connect_attempts += 1
+            logger.info('Retrying ' + str(connect_attempts) + '/3')
+            wait(5)
+            connect_and_launch(port)
+        if connect_attempts >= 3:
+            logger.info('ADB connection error!')
+            exit(2)
 
-    # Launch/focus the game
-    device.shell('monkey -p  com.farlightgames.igame.gp 1')
+    # Get scrcpy running, catch errors again
+    try:
+        scrcpyClient = scrcpy.Client(device=device.serial)
+        scrcpyClient.max_fps = 5
+        scrcpyClient.bitrate = 16000000
+        scrcpyClient.start(daemon_threaded=True)
+        setattr(device, 'srccpy', scrcpyClient)
+    except Exception as e:
+        logger.info('Error starting scrcpy!')
+    finally:
+        logger.info('Device ' + str(device.serial) + " connected successfully")
+
+    # Sometimes the game crashes when launching so we make sure its been running for 5 seconds before continuing
+    while device.shell('pidof com.farlightgames.igame.gp') == '':
+        device.shell('monkey -p  com.farlightgames.igame.gp 1')
+        wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
 
 def get_adb_device(port):
     adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
     if len(adb.devices()) > 0:
         for active_devices in adb.devices():
-            if active_devices.serial[0] == 'e':
+            if active_devices.serial[0] == 'e': # If it starts with 'e' (basically 'emulator-####')
                 return active_devices.serial
-    elif len(adb.devices()) < 1:
+    elif len(adb.devices()) < 1: # Else manually connect using port
         device_name = '127.0.0.1:' + port
         Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
         return device_name
@@ -289,11 +302,15 @@ def safe_open_and_close(name, state):
 
 # Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
 def get_connected_device():
+    adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
     try:
         devices = adb.devices()
         if devices:
             return devices[0]
         else:
+            Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
+            Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
+            wait(2)
             return None
     except Exception as e:
         return None
