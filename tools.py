@@ -22,6 +22,7 @@ connect_attempts = 1
 
 def connect_and_launch(port):
     global device
+    global connect_attempts
 
     if not get_connected_device():
         device = adb.device(get_adb_device(port))
@@ -38,7 +39,7 @@ def connect_and_launch(port):
             connect_attempts += 1
             logger.info('Retrying ' + str(connect_attempts) + '/3')
             wait(5)
-            connect_and_launch(port)
+            connect_and_launch(port) # Careful here as we run concurrent c_a_l() which can lead to multiple sessions running at once
         if connect_attempts >= 3:
             logger.info('ADB connection error!')
             exit(2)
@@ -58,6 +59,9 @@ def connect_and_launch(port):
     # Sometimes the game crashes when launching so we make sure its been running for 5 seconds before continuing
     device.shell('monkey -p  com.farlightgames.igame.gp 1')
     wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
+    while device.shell('pidof com.farlightgames.igame.gp') == '':
+        device.shell('monkey -p  com.farlightgames.igame.gp 1')
+        wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
 
 def get_adb_device(port):
     adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory

@@ -10,7 +10,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.5'
+version = '0.1.6'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -105,7 +105,7 @@ def dailies():
     if config.getboolean('ACTIVITIES', 'claim_events'):
         claim_events()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
-        farm_affinity()
+        farm_affinity(45)
     logger.info('Dailies done!')
 
 def team_up():
@@ -156,6 +156,9 @@ def team_up():
         # If ready is not visible after clicking join then it's been disbanded etc so we restart
         if not isVisible('teamup/ready', region=regions['bottom_buttons']):
             logger.info('Something went wrong, waiting 30s before continuing\n')
+            # Try a quit just in case
+            click('teamup/quit', region=regions['bottom_buttons'], suppress=True)
+            click('buttons/confirm', region=regions['confirm_deny'], suppress=True) # to catch 'Reconnect to chat?
             wait(30)
             return
         click('teamup/ready', seconds=4, region=regions['bottom_buttons'])
