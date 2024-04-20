@@ -56,9 +56,8 @@ def connect_and_launch(port):
         logger.info('Device ' + str(device.serial) + " connected successfully")
 
     # Sometimes the game crashes when launching so we make sure its been running for 5 seconds before continuing
-    while device.shell('pidof com.farlightgames.igame.gp') == '':
-        device.shell('monkey -p  com.farlightgames.igame.gp 1')
-        wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
+    device.shell('monkey -p  com.farlightgames.igame.gp 1')
+    wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
 
 def get_adb_device(port):
     adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
@@ -303,14 +302,12 @@ def safe_open_and_close(name, state):
 # Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
 def get_connected_device():
     adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
-    try:
+    try: 
         devices = adb.devices()
         if devices:
             return devices[0]
-        else:
-            Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
-            Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
-            wait(2)
-            return None
-    except Exception as e:
-        return None
+    except:
+        Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
+        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
+        wait(2)
+        return None  
