@@ -10,7 +10,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.6'
+version = '0.1.7'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -119,6 +119,7 @@ def team_up():
             wait()
         logger.info('Opening chat')
         while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
+            click('buttons/back', seconds=0, suppress=True, region=regions['back']) # Somehow we open afk rewards occasionally, this will exit that
             click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
             isVisible('buttons/confirm', region=regions['confirm_deny'], click=True) # to catch 'Reconnect to chat?'
             click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])

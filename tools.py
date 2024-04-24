@@ -42,7 +42,7 @@ def connect_and_launch(port):
             connect_and_launch(port) # Careful here as we run concurrent c_a_l() which can lead to multiple sessions running at once
         if connect_attempts >= 3:
             logger.info('ADB connection error!')
-            exit(2)
+            sys.exit(2)
 
     # Get scrcpy running, catch errors again
     try:
@@ -81,18 +81,18 @@ def waitUntilGameActive():
     timeoutcounter = 0
     loaded = 1
 
-    while loadingcounter < loaded:
-        clickXY(420, 50)  # Neutral location for closing reward pop ups etc, should never be an in game button here
-        click('buttons/back', suppress=True, region=(50, 1750, 150, 150))
-        click('buttons/back2', suppress=True, region=(50, 1750, 150, 150))
-        click('buttons/claim', suppress=True) # Claim Esperia monthly so it doesnt block the view
+    while loadingcounter <= loaded:
+        if isVisible('labels/sunandstars', seconds=0,  region=(770, 40, 100, 100)):
+            break
+        clickXY(420, 50, seconds=0)  # Neutral location for closing reward pop ups etc, should never be an in game button here
+        click('buttons/back', seconds=0, suppress=True, region=(50, 1750, 150, 150))
+        click('buttons/back2', seconds=0,  suppress=True, region=(50, 1750, 150, 150))
+        click('buttons/claim', seconds=0,  suppress=True) # Claim Esperia monthly so it doesnt block the view
         timeoutcounter += 1
-        if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
-            loadingcounter += 1
         if timeoutcounter > 30:  # This is nearly 4 minutes currently
             logger.info('Timed out while loading!')
-            save_screenshot('timeout')
-            exit()
+            save_screenshot('loading_timeout')
+            sys.exit()
     logger.info('Game Loaded!\n')
 
 # Clicks on the given XY coordinates
@@ -191,11 +191,14 @@ def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, graysc
             wait(1)
     elif result != None:
         list_results = list(result)
-        x, y, w, h = list_results[-1]
-        x_center = round(x + w/2)
-        y_center = round(y + h/2)
-        device.input_tap(x_center, y_center)
-        wait(seconds)
+        if len(list_results) > 1:
+            x, y, w, h = list_results[-1]
+            x_center = round(x + w/2)
+            y_center = round(y + h/2)
+            device.input_tap(x_center, y_center)
+            wait(seconds)
+        else:
+            logger.info('click_last error!')
     else:
         if suppress is not True:
             logger.info('Image:' + image + ' not found!')
@@ -269,6 +272,8 @@ def return_pixel_colour(x, y, c, seconds=1):
     return screenshot[y, x, c]
 
 def recover(count=3):
+    timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+    save_screenshot('recovery_' + timestamp)
     timer = 0
     if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
         return True
@@ -278,10 +283,8 @@ def recover(count=3):
         click_location('neutral')
         timer += 1
         if timer > count:
-            timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
-            save_screenshot('recovery_' + timestamp)
             return False
-            exit()
+            sys.exit()
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
             return True
 
@@ -314,4 +317,5 @@ def get_connected_device():
         Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
         Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
         wait(2)
-        return None  
+        return None
+
