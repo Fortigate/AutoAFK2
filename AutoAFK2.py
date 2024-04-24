@@ -100,10 +100,12 @@ def dailies():
         arena(config.getint('ACTIVITIES', 'arena_battles'))
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         quests()
-    if config.getboolean('ACTIVITIES', 'noble_path'):
-        noble_path()
     if config.getboolean('ACTIVITIES', 'claim_events'):
         claim_events()
+    if config.getboolean('ACTIVITIES', 'push_towers'):
+        blind_push("towers")
+    if config.getboolean('ACTIVITIES', 'noble_path'):
+        noble_path()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
         farm_affinity(45)
     logger.info('Dailies done!')
@@ -308,7 +310,7 @@ def arena(battles=9):
                 if isVisible('labels/arena_promote', region=regions['bottom_third']):
                     clickXY(550, 1800)
                 timeout += 1
-                if timeout > 40: # Should be about 10 seconds longer than a full fight at 2x
+                if timeout > 50: # Should be about 10 seconds longer than a full fight at 2x
                     logger.info('Arena timeout error\n')
                     timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
                     save_screenshot('arena_timeout_' + timestamp)
@@ -353,7 +355,7 @@ def dream_realm():
             wait()
             click_location('neutral')
             timer += 1
-            if timer > 30:
+            if timer > 40:
                 logger.info('Dream Realm timeout!')
                 recover()
                 return
@@ -472,6 +474,37 @@ def claim_events():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
+def blind_push(mode):
+    if mode == "towers":
+        safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')  
+        logger.info('Blind-pushing towers')
+        clickXY(460,1820, seconds=2)
+        click("labels/legend_trial", seconds=2)
+
+        factions = ["Graveborn", "Light", "Mauler", "Wilder"]
+        for faction in factions:
+            if isVisible("towers/"+faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
+                clickXY(750,1350, seconds=0.1)
+                clickXY(300,1250, seconds=0.1)
+                clickXY(750,1270, seconds=0.1)
+                clickXY(300,1170, seconds=0.1)
+                wait(3)
+                if isVisible("buttons/battle", click=True):
+                    while True:
+                        if isVisible("labels/tap_to_close", click=True, seconds=2):
+                            click("buttons/back")
+                            break
+                        elif isVisible("buttons/next", click=True, retry=3):
+                            logger.info(faction + ' win detected, moving to next floor')
+                            wait(3)
+                            click("buttons/battle", seconds=3)
+                        elif isVisible("buttons/back", click=True):
+                            break
+                        wait(5)
+
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):  
+            logger.info('Towers pushed!\n')
+
 # Handle launch arguments
 
 if args['forceprint']: # Define a custom logging handler that duplicates log messages to stdout
@@ -490,8 +523,18 @@ if args['dailies']:
     dailies()
 
 if args['teamup']:
-    logger.info('Starting up team-up farming\n')
-    while 1 == 1:
+    logger.info('Starting up team-up farming \n')
+    start_time = time.time()
+    limit_minutes = config.getint('ACTIVITIES', 'teamup_limit')
+
+    if limit_minutes == 0:
+        limit = float('inf')
+        print("Time limit: Indefinite")
+    else:
+        limit = limit_minutes * 60
+        print(f"Time remaining: {limit_minutes} minutes")
+
+    while time.time() - start_time < limit:
         team_up()
 
 
