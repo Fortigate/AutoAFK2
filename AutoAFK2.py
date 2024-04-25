@@ -86,8 +86,6 @@ connect_and_launch(port=config.get('ADVANCED', 'port'))
 waitUntilGameActive()
 
 def dailies():
-    blind_push("towers")
-    return
     if config.getboolean('ACTIVITIES', 'claim_afk'):
         claim_afk_rewards()
     if config.getboolean('ACTIVITIES', 'friend_points'):
