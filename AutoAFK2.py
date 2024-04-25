@@ -86,6 +86,8 @@ connect_and_launch(port=config.get('ADVANCED', 'port'))
 waitUntilGameActive()
 
 def dailies():
+    blind_push("towers")
+    return
     if config.getboolean('ACTIVITIES', 'claim_afk'):
         claim_afk_rewards()
     if config.getboolean('ACTIVITIES', 'friend_points'):
@@ -479,7 +481,7 @@ def blind_push(mode):
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')  
         logger.info('Blind-pushing towers')
         clickXY(460,1820, seconds=2)
-        click("labels/legend_trial", seconds=2)
+        click("labels/legend_trial", seconds=2, retry=3)
 
         factions = ["Graveborn", "Light", "Mauler", "Wilder"]
         for faction in factions:
@@ -490,6 +492,7 @@ def blind_push(mode):
                 clickXY(300,1170, seconds=0.1)
                 wait(3)
                 if isVisible("buttons/battle", click=True):
+                    back_occurence=0
                     while True:
                         if isVisible("labels/tap_to_close", click=True, seconds=2):
                             click("buttons/back")
@@ -497,9 +500,14 @@ def blind_push(mode):
                         elif isVisible("buttons/next", click=True, retry=3):
                             logger.info(faction + ' win detected, moving to next floor')
                             wait(3)
+                            back_occurence=0
                             click("buttons/battle", seconds=3)
-                        elif isVisible("buttons/back", click=True):
-                            break
+                        elif isVisible("buttons/back"):
+                            if back_occurence==0:
+                               back_occurence=1
+                            else: 
+                                click("buttons/back")
+                                break
                         wait(5)
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):  
