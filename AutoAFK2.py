@@ -10,7 +10,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.7'
+version = '0.1.9'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
@@ -321,6 +321,10 @@ def arena(battles=9):
                 click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
             counter += 1
             timer = 0
+            # Collect Victory Rewards
+            clickXY(200, 550)
+            clickXY(200, 550)
+            clickXY(200, 550)
     else:
         logger.info('Issue opening Arena!')
         recover()
@@ -523,16 +527,16 @@ if args['dailies']:
     dailies()
 
 if args['teamup']:
-    logger.info('Starting up team-up farming \n')
+    logger.info('Starting up team-up farming')
     start_time = time.time()
     limit_minutes = config.getint('ACTIVITIES', 'teamup_limit')
 
     if limit_minutes == 0:
         limit = float('inf')
-        print("Time limit: Indefinite")
+        logger.info("Time limit: Indefinite\n")
     else:
         limit = limit_minutes * 60
-        print(f"Time remaining: {limit_minutes} minutes")
+        logger.info(f"Time remaining: {limit_minutes} minutes\n")
 
     while time.time() - start_time < limit:
         team_up()
