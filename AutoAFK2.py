@@ -10,10 +10,12 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.1.9'
+version = '0.2.0'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
+parser.add_argument("-a", "--abyss", action = 'store_true', help = "Run the Trial of Abyss retry function")
+parser.add_argument("-l", "--legend", action = 'store_true', help = "Run the Trial of Abyss retry function")
 parser.add_argument("-t", "--teamup", action = 'store_true', help = "Run the Team-up function")
 parser.add_argument("-d", "--dailies", action = 'store_true', help = "Run the Dailies function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
@@ -509,6 +511,37 @@ def blind_push(mode):
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):  
             logger.info('Towers pushed!\n')
 
+    if mode == 'abyss':
+        safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+        logger.info('Auto-retrying Trial of Abyss')
+
+        clickXY(100, 1800, seconds=4)  # Open AFK Rewards
+        clickXY(550, 1600, seconds=4)  # Open Trial of Abyss
+        if isVisible('labels/trial_of_abyss'):
+            while True:
+                click("buttons/abyss_lvl", suppress=True)
+                click("buttons/battle", suppress=True)
+                click("labels/tap_to_close", suppress=True)
+        else:
+            logger.info('Something went wrong opening Trial of Abyss!')
+            recover()
+
+    if mode == 'tower':
+        logger.info('Pushing towers badly')
+        clickXY(460,1820, seconds=2)
+        click("labels/legend_trial", seconds=2)
+
+        factions = ["Light", "Wilder", "Graveborn", "Mauler"]
+        for faction in factions:
+            if isVisible("towers/" + faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
+                while True:
+                    # Grayscale 'abyss_lvl' image to make it colour agnostic
+                    click("buttons/abyss_lvl", suppress=True, grayscale=True)
+                    click("buttons/battle", suppress=True)
+                    click("labels/tap_to_close", suppress=True)
+
+
+
 # Handle launch arguments
 
 if args['forceprint']: # Define a custom logging handler that duplicates log messages to stdout
@@ -541,4 +574,9 @@ if args['teamup']:
     while time.time() - start_time < limit:
         team_up()
 
+if args['abyss']:
+    logger.info('Opening Trials of Abyss')
+    blind_push('abyss')
 
+if args['legend']:
+    blind_push('tower')
