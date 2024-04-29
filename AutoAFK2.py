@@ -485,28 +485,33 @@ def blind_push(mode):
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')  
         logger.info('Blind-pushing towers')
         clickXY(460,1820, seconds=2)
-        click("labels/legend_trial", seconds=2)
+        click("labels/legend_trial", seconds=2, retry=3)
 
-        factions = ["Graveborn", "Light", "Mauler", "Wilder"]
+        factions = ["Light", "Wilder", "Graveborn", "Mauler"]
         for faction in factions:
-            if isVisible("towers/"+faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
-                clickXY(750,1350, seconds=0.1)
-                clickXY(300,1250, seconds=0.1)
-                clickXY(750,1270, seconds=0.1)
-                clickXY(300,1170, seconds=0.1)
-                wait(3)
-                if isVisible("buttons/battle", click=True):
-                    while True:
-                        if isVisible("labels/tap_to_close", click=True, seconds=2):
-                            click("buttons/back")
-                            break
-                        elif isVisible("buttons/next", click=True, retry=3):
-                            logger.info(faction + ' win detected, moving to next floor')
-                            wait(3)
-                            click("buttons/battle", seconds=3)
-                        elif isVisible("buttons/back", click=True):
-                            break
-                        wait(5)
+            if isVisible("towers/"+faction.lower(), confidence=0.94, click=True, seconds=4, yrelative=-20):
+                if isVisible("towers/floor_info", click=True, region=(15, 1060, 1000, 600), seconds=3, yrelative=-50):
+                    wait(3)
+                    if isVisible("buttons/battle", click=True):
+                        back_occurence=0
+                        while True:
+                            if isVisible("labels/tap_to_close", click=True, seconds=2):
+                                click("buttons/back")
+                                break
+                            elif isVisible("buttons/next", click=True, retry=3):
+                                logger.info(faction + ' win detected, moving to next floor')
+                                wait(3)
+                                back_occurence=0
+                                click("buttons/battle", seconds=3)
+                            elif isVisible("buttons/back"):
+                                if back_occurence==0:
+                                    back_occurence=1
+                                else: 
+                                    click("buttons/back")
+                                    break
+                            wait(5)
+                else:
+                    break
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):  
             logger.info('Towers pushed!\n')
