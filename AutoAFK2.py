@@ -525,26 +525,14 @@ def blind_push(mode):
         if isVisible('labels/trial_of_abyss'):
             while True:
                 click("buttons/abyss_lvl", suppress=True)
-                click("buttons/battle", suppress=True)
-                click("labels/tap_to_close", suppress=True)
+                click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
+                click("labels/tap_to_close", suppress=True, region=regions['bottom_buttons'])
+                if isVisible("buttons/next", click=True, region=regions['bottom_buttons']):
+                    logger.info('Stage passed!')
+                wait(2)
         else:
             logger.info('Something went wrong opening Trial of Abyss!')
             recover()
-
-    if mode == 'tower':
-        logger.info('Pushing towers badly')
-        clickXY(460,1820, seconds=2)
-        click("labels/legend_trial", seconds=2)
-
-        factions = ["Light", "Wilder", "Graveborn", "Mauler"]
-        for faction in factions:
-            if isVisible("towers/" + faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
-                while True:
-                    # Grayscale 'abyss_lvl' image to make it colour agnostic
-                    click("buttons/abyss_lvl", suppress=True, grayscale=True)
-                    click("buttons/battle", suppress=True)
-                    click("labels/tap_to_close", suppress=True)
-
 
 
 # Handle launch arguments
@@ -584,4 +572,4 @@ if args['abyss']:
     blind_push('abyss')
 
 if args['legend']:
-    blind_push('tower')
+    blind_push('towers')
