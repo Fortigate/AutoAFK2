@@ -684,3 +684,5 @@ if selection == 7:
     if day == 7:
         blind_push('retry_tower', 'graveborn')
     blind_push('towers')
+
+
