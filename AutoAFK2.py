@@ -11,17 +11,18 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.3.0'
+version = '0.3.1'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("-a", "--abyss", action = 'store_true', help = "Run the Trial of Abyss retry function")
-parser.add_argument("-l", "--legend", action = 'store_true', help = "Run the Legend Trials retry function")
-parser.add_argument("-t", "--teamup", action = 'store_true', help = "Run the Team-up function")
-parser.add_argument("-d", "--dailies", action = 'store_true', help = "Run the Dailies function")
+parser.add_argument("-a", "--abyss", action='store_true', help = "Run the Trial of Abyss retry function")
+parser.add_argument("-l", "--legend", action='store_true', help = "Run the Legend Trials retry function")
+parser.add_argument("-t", "--teamup", action='store_true', help = "Run the Team-up function")
+parser.add_argument("-d", "--dailies", action='store_true', help = "Run the Dailies function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
+parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
 
@@ -37,6 +38,27 @@ if settings == 'settings.ini':
     logname = 'autoafk2.log'
 else:
     logname = settings.split('.')[0] + '.log'
+
+from threading import Event
+import keyboard
+
+hotkey = 'k'
+
+running = Event()
+running.set()  # at the start, it is running
+
+def handle_key_event(event):
+    if event.event_type == 'down':
+        # toggle value of 'running'
+        if running.is_set():
+            running.clear()
+            logger.info('Pausing!')
+        else:
+            running.set()
+
+# make it so that handle_key_event is called when k is pressed; this will
+# be in a separate thread from the main execution
+keyboard.hook_key(hotkey, handle_key_event)
 
 # File handler
 file_log_handler = logging.FileHandler(filename=logname)
@@ -78,7 +100,8 @@ regions = {
     'bottom_third': (0, 1280, 1080, 640),
     'bottom_buttons': (0, 1620, 1080, 300),
     'confirm_deny': (500, 1100, 500, 300),
-    'battle_modes': (20, 580, 1050, 1100)
+    'battle_modes': (20, 580, 1050, 1100),
+    'action_buttons': (400, 1050, 300, 500) # gives out of bounds error and I'm too tired to work out why
 }
 
 # Boot up text
@@ -486,7 +509,7 @@ def blind_push(mode, tower=None):
     if mode == "towers":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
         logger.info('Blind-pushing towers')
-        clickXY(460,1820, seconds=2)
+        clickXY(460, 1820, seconds=2)
         click("labels/legend_trial", seconds=2, retry=3)
 
         factions = ["Light", "Wilder", "Graveborn", "Mauler"]
@@ -495,7 +518,7 @@ def blind_push(mode, tower=None):
                 if isVisible("towers/floor_info", click=True, region=(15, 1060, 1000, 600), seconds=3, yrelative=-50):
                     wait(3)
                     if isVisible("buttons/battle", click=True):
-                        back_occurence=0
+                        back_occurence = 0
                         while True:
                             if isVisible("labels/tap_to_close", click=True, seconds=2):
                                 click("buttons/back")
@@ -506,8 +529,8 @@ def blind_push(mode, tower=None):
                                 back_occurence=0
                                 click("buttons/battle", seconds=3)
                             elif isVisible("buttons/back"):
-                                if back_occurence==0:
-                                    back_occurence=1
+                                if back_occurence == 0:
+                                    back_occurence = 1
                                 else:
                                     click("buttons/back")
                                     break
@@ -520,54 +543,80 @@ def blind_push(mode, tower=None):
 
     if mode == "retry_tower":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-        logger.info('Pushing ' + tower + ' tower!')
-        clickXY(460,1820, seconds=2)
+        logger.info('Pushing ' + tower.capitalize() + ' tower!')
+        clickXY(460, 1820, seconds=2)
         click("labels/legend_trial", seconds=2)
 
         factions = ["graveborn", "light", "mauler", "wilder"]
         for faction in factions:
             if faction == tower:
                 if isVisible("towers/"+faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
-                    clickXY(750,1350, seconds=0.1)
-                    clickXY(300,1250, seconds=0.1)
-                    clickXY(750,1270, seconds=0.1)
-                    clickXY(300,1170, seconds=0.1)
-                    wait(3)
-                    if isVisible("buttons/battle", click=True):
-                        while True:
-                            if isVisible("labels/tap_to_close", click=True, seconds=2):
-                                click("buttons/back")
-                            elif isVisible("buttons/next", click=True, retry=3):
-                                logger.info(faction + ' win detected, moving to next floor')
-                                wait(3)
-                                click("buttons/battle", seconds=3)
-                            elif isVisible("buttons/back", click=True):
-                                wait(5)
+                    while True:
+                        click("buttons/abyss_lvl", suppress=True, grayscale=True, confidence=0.8)
+                        click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
+                        click("labels/tap_to_close", suppress=True, region=regions['bottom_buttons'])
+                        if isVisible("buttons/next", click=True, region=regions['bottom_buttons']):
+                            logger.info(faction.capitalize() + ' win detected, moving to next floor')
+                            click("buttons/battle", seconds=3, suppress=True)
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-                logger.info('Towers pushed!\n')
+            logger.info('Towers pushed!\n')
 
     if mode == 'abyss':
+        victory_counter = 0
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
         logger.info('Auto-retrying Trial of Abyss')
 
         clickXY(100, 1800, seconds=4)  # Open AFK Rewards
         clickXY(550, 1600, seconds=4)  # Open Trial of Abyss
+        clickXY(550, 1600, seconds=4)  # Again in case we just claimed loot
         while isVisible('labels/trial_of_abyss', click=True): # First click can claim loot so we loop it to amek sure we're opening ToA
             while True:
-                click("buttons/abyss_lvl", suppress=True)
-                click("buttons/battle", suppress=True)
-                click("labels/tap_to_close", suppress=True)
-                if isVisible("buttons/next", click=True):
-                    logger.info('Stage passed!')
-                click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
-                click("labels/tap_to_close", suppress=True, region=regions['bottom_buttons'])
-                if isVisible("buttons/next", click=True, region=regions['bottom_buttons']):
-                    logger.info('Stage passed!')
+                if not running.is_set():
+                    running.wait()  # wait until running is set
+                    logger.info('Resuming')
+                click("buttons/abyss_lvl", seconds=0.2, suppress=True)
+                click("buttons/battle", suppress=True, seconds=0.2, region=regions['bottom_buttons'])
+                victory_counter += 1
+                click("labels/tap_to_close", suppress=True, seconds=0.2, region=regions['bottom_buttons'])
+                if isVisible("buttons/next", seconds=0.2, click=True, region=regions['bottom_buttons']):
+                    logger.info('Stage passed in ' + str(victory_counter) + ' attemps!')
+                    victory_counter = 0
                 wait(2)
         else:
             logger.info('Something went wrong opening Trial of Abyss!')
             recover()
+
+# Scans and pushes the various buttons needed to complete story/side quests
+# Very slow, can get stuck if there is a player present at an end point and we get the magnifying glass symbol
+# The order of checks and clicks is important to not get stuck in loops
+def quest_push():
+    logger.info('Pushing Quests!\n')
+    while True:
+        clickXY(870, 400, seconds=2)
+        clickXY(870, 400)
+        if isVisible('buttons/battle', click=True, seconds=0.2):
+            logger.info('Battling')
+        if isVisible('buttons/skip', click=True, region=regions['bottom_buttons'], seconds=0.2):
+            logger.info('Skipping')
+        if isVisible('buttons/dialogue_option', click=True, region=regions['chat_window'], seconds=0.2):
+            logger.info('Advancing dialogue')
+        if isVisible('buttons/red_dialogue', click=True, seconds=0.2):
+            logger.info('Advancing dialogue')
+        if isVisible('buttons/confirm', click=True, seconds=0.2):
+            logger.info('Clicking Confirm')
+        if isVisible('buttons/interact', click=True, region=regions['chat_window'], seconds=0.2):
+            logger.info('Interacting')
+        if isVisible('buttons/dialogue', confidence=0.8, click=True, region=regions['chat_window'], seconds=0.2):
+            logger.info('Initiating dialogue')
+        if isVisible('buttons/tap_and_hold', region=regions['chat_window'], seconds=0.2):
+            logger.info('Holding button')
+            swipe(550, 1250, 550, 1250, 4000)  # Hacky way to hold it down
+        if isVisible('buttons/enter', seconds=0.2):
+            logger.info('Entering location')
+        if isVisible('buttons/battle_button', click=True, region=regions['chat_window'], confidence=0.8, seconds=0.2):
+            logger.info('Initiating battle')
+        swipe(550, 1500, 560, 1510, 250) # Hypofiends battle button won't trigger unless we move a few pixels
 
 
 # Handle launch arguments
@@ -609,6 +658,9 @@ if args['abyss']:
 
 if args['legend']:
     blind_push('tower')
+
+if args['test']:
+    quest_push()
 
 # If no function launch argument we pop the UI
 
@@ -661,11 +713,17 @@ if selection == 4:
         blind_push('retry_tower', 'wilder')
     if day == 4:
         blind_push('retry_tower', 'graveborn')
+    if day == 5:
+        blind_push('retry_tower', 'light')
+    if day == 6:
+        blind_push('retry_tower', 'wilder')
+    if day == 7:
+        blind_push('retry_tower', 'light')
 
 if selection == 5:
     day = currenttimeutc.isoweekday()
     if day == 5:
-        blind_push('retry_tower', 'light')
+        blind_push('retry_tower', 'mauler')
     if day == 6:
         blind_push('retry_tower', 'wilder')
     if day == 7:
@@ -684,5 +742,4 @@ if selection == 7:
     if day == 7:
         blind_push('retry_tower', 'graveborn')
     blind_push('towers')
-
 
