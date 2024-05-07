@@ -132,7 +132,7 @@ def dailies():
     if config.getboolean('ACTIVITIES', 'push_towers'):
         blind_push("towers")
     if config.getboolean('ACTIVITIES', 'push_dream_realm'):
-        blind_push("dream_realm", retries=9)
+        blind_push("dream_realm")
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
@@ -507,7 +507,7 @@ def claim_events():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
-def blind_push(mode, tower=None, retries=0):
+def blind_push(mode, tower=None):
     if mode == "towers":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
         logger.info('Blind-pushing towers')
@@ -596,7 +596,7 @@ def blind_push(mode, tower=None, retries=0):
         clickXY(450, 1825, seconds=3)
         click('buttons/dream_realm', region=regions['battle_modes'], seconds=3)
         
-        for retry_no in range(retries):
+        for _ in range(10):
             if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5):
                 if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=3):
                     while not isVisible('labels/tap_to_close'):
