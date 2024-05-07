@@ -131,6 +131,8 @@ def dailies():
         claim_events()
     if config.getboolean('ACTIVITIES', 'push_towers'):
         blind_push("towers")
+    if config.getboolean('ACTIVITIES', 'push_dream_realm'):
+        blind_push("dream_realm", retries=9)
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
@@ -505,7 +507,7 @@ def claim_events():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
-def blind_push(mode, tower=None):
+def blind_push(mode, tower=None, retries=0):
     if mode == "towers":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
         logger.info('Blind-pushing towers')
@@ -586,6 +588,27 @@ def blind_push(mode, tower=None):
         else:
             logger.info('Something went wrong opening Trial of Abyss!')
             recover()
+
+    if mode == "dream_realm":
+        logger.info('Auto-retrying Dream Realm')
+        safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
+        clickXY(450, 1825, seconds=3)
+        click('buttons/dream_realm', region=regions['battle_modes'], seconds=3)
+        
+        for retry_no in range(retries):
+            if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5):
+                if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=3):
+                    while not isVisible('labels/tap_to_close'):
+                        wait()
+                    while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
+                        click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
+                    logger.info('Battle complete!')
+                else: 
+                    break
+
+        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+            logger.info('Dream Realm attempts exhausted.\n')    
 
 # Scans and pushes the various buttons needed to complete story/side quests
 # Very slow, can get stuck if there is a player present at an end point and we get the magnifying glass symbol
