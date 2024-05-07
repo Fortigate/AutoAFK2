@@ -329,6 +329,8 @@ def arena(battles=9):
             clickXY(200, 550)
             clickXY(200, 550)
             clickXY(200, 550)
+            click_location('neutral')
+
     else:
         logger.info('Issue opening Arena!')
         recover()
