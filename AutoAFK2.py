@@ -530,7 +530,7 @@ def blind_push(mode, tower=None):
         factions = ["Light", "Wilder", "Graveborn", "Mauler"]
         for faction in factions:
             if isVisible("towers/"+faction.lower(), confidence=0.94, click=True, seconds=4, yrelative=-20):
-                if isVisible("towers/floor_info", click=True, region=(15, 750, 1050, 1000), seconds=3, yrelative=-50):
+                if isVisible("towers/floor_info", click=True, region=(15, 1060, 1050, 600), seconds=3, yrelative=-50):
                     wait(3)
                     if isVisible("buttons/battle", click=True):
                         back_occurence = 0
@@ -665,11 +665,6 @@ def quest_push():
         if isVisible('buttons/battle_button', click=True, region=regions['chat_window'], confidence=0.8, seconds=0.2):
             logger.info('Initiating battle')
         swipe(550, 1500, 560, 1510, 250) # Hypofiends battle button won't trigger unless we move a few pixels
-
-def run_lab():
-    if lab is not completed:
-        run_lab()
-
 
 # Handle launch arguments
 
