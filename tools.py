@@ -213,7 +213,7 @@ def swipe(x1, y1, x2, y2, duration=100, seconds=1):
 # Returns True if the image is found, False if not
 # Confidence value can be reduced for images with animations
 # Retry for retrying image search
-def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0, 0, 1080, 1920), xrelative=0, yrelative=0):
+def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0, 0, 1080, 1920), xrelative=0, yrelative=0, grayscale=False):
     counter = 0
     screenshot = getFrame()
     search = Image.open(os.path.join(cwd, 'img', image + '.png'))
@@ -222,7 +222,7 @@ def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0,
     if res == None and retry != 1:
         while counter < retry:
             screenshot = getFrame()
-            res = locate(search, screenshot, grayscale=False, confidence=confidence, region=region)
+            res = locate(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
             if res != None:
                 if click is True:
                     x, y, w, h = res

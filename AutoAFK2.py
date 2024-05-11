@@ -58,7 +58,7 @@ def handle_key_event(event):
 
 # make it so that handle_key_event is called when k is pressed; this will
 # be in a separate thread from the main execution
-keyboard.hook_key(hotkey, handle_key_event)
+#keyboard.hook_key(hotkey, handle_key_event)
 
 # File handler
 file_log_handler = logging.FileHandler(filename=logname)
@@ -376,7 +376,7 @@ def dream_realm():
         clickXY(1020, 280, seconds=5)
         clickXY(1020, 280, seconds=2)
         clickXY(550, 1800, seconds=2)
-        click('buttons/back', region=regions['back'], seconds=3)
+        click('buttons/back2', region=regions['back'], seconds=3)
     else:
         logger.info('issue collecting rewards!')
         recover()
@@ -475,23 +475,31 @@ def noble_path():
     click('buttons/main_menu', region=regions['main_menu'], seconds=2)
     click('buttons/noble_path', region=regions['menu_activities'], seconds=2)
 
-    if isVisible('buttons/noble_quests_inactive', region=regions['bottom_third']):
-        click('buttons/noble_quests_inactive', region=regions['bottom_third'], seconds=2)
-
+    if isVisible('buttons/noble_path_active', region=regions['bottom_third'], click=True, seconds=2, grayscale=True) or isVisible('buttons/noble_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
         # This will claim quests in all tabs
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
 
         # Travelogue
-        click('buttons/noble_travelogue_inactive', region=regions['bottom_third'])
+        click('buttons/noble_travelogue_inactive', grayscale=True)
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
 
-        if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-            logger.info('Noble path collected!\n')
-        else:
-            logger.info('Something went wrong collecting Noble Path!')
-            recover()
+    if isVisible('buttons/noble_season_active', region=regions['bottom_third'], click=True, seconds=2, grayscale=True) or isVisible('buttons/noble_season_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+        # This will claim quests in all tabs
+        if isVisible('buttons/claim_all', click=True):
+            clickXY(1000, 1800)
+
+        # Travelogue
+        click('buttons/noble_travelogue_inactive', grayscale=True)
+        if isVisible('buttons/claim_all', click=True):
+            clickXY(1000, 1800)
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Noble path collected!\n')
+    else:
+        logger.info('Something went wrong collecting Season Noble path!')
+        recover()
 
 def claim_events():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -500,7 +508,7 @@ def claim_events():
     click('buttons/event', region=regions['menu_activities'], seconds=3)
 
     # All Heroes
-    if isVisible('events/all_heroes', click=True):
+    if isVisible('events/all_heroes', click=True, seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
         if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
             logger.info('All Heroes claimed')
             click_location('neutral')
@@ -519,7 +527,7 @@ def blind_push(mode, tower=None):
         factions = ["Light", "Wilder", "Graveborn", "Mauler"]
         for faction in factions:
             if isVisible("towers/"+faction.lower(), confidence=0.94, click=True, seconds=4, yrelative=-20):
-                if isVisible("towers/floor_info", click=True, region=(15, 1060, 1000, 600), seconds=3, yrelative=-50):
+                if isVisible("towers/floor_info", click=True, region=(15, 1060, 1050, 600), seconds=3, yrelative=-50):
                     wait(3)
                     if isVisible("buttons/battle", click=True):
                         back_occurence = 0
