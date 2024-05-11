@@ -114,24 +114,24 @@ connect_and_launch(port=config.get('ADVANCED', 'port'))
 waitUntilGameActive()
 
 def dailies():
-    # if config.getboolean('ACTIVITIES', 'claim_afk'):
-    #     claim_afk_rewards()
-    # if config.getboolean('ACTIVITIES', 'friend_points'):
-    #     friend_points_collect()
-    # if config.getboolean('ACTIVITIES', 'mail_collect'):
-    #     mail_connect()
-    # if config.getboolean('ACTIVITIES', 'emporium_purchases'):
-    #     emporium_purchases()
-    # if config.getboolean('ACTIVITIES', 'dream_realm'):
-    #     dream_realm()
-    # if config.getint('ACTIVITIES', 'arena_battles') > 0:
-    #     arena(config.getint('ACTIVITIES', 'arena_battles'))
-    # if config.getboolean('ACTIVITIES', 'collect_quests'):
-    #     quests()
-    # if config.getboolean('ACTIVITIES', 'claim_events'):
-    #     claim_events()
-    # if config.getboolean('ACTIVITIES', 'push_towers'):
-    #     blind_push("towers")
+    if config.getboolean('ACTIVITIES', 'claim_afk'):
+        claim_afk_rewards()
+    if config.getboolean('ACTIVITIES', 'friend_points'):
+        friend_points_collect()
+    if config.getboolean('ACTIVITIES', 'mail_collect'):
+        mail_connect()
+    if config.getboolean('ACTIVITIES', 'emporium_purchases'):
+        emporium_purchases()
+    if config.getboolean('ACTIVITIES', 'dream_realm'):
+        dream_realm()
+    if config.getint('ACTIVITIES', 'arena_battles') > 0:
+        arena(config.getint('ACTIVITIES', 'arena_battles'))
+    if config.getboolean('ACTIVITIES', 'collect_quests'):
+        quests()
+    if config.getboolean('ACTIVITIES', 'claim_events'):
+        claim_events()
+    if config.getboolean('ACTIVITIES', 'push_towers'):
+        blind_push("towers")
     if config.getboolean('ACTIVITIES', 'push_dream_realm'):
         blind_push("dream_realm")
     if config.getboolean('ACTIVITIES', 'noble_path'):
