@@ -11,7 +11,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.4.1'
+version = '0.4.2'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
@@ -111,6 +111,7 @@ logger.info('Version: ' + version)
 
 # Boot up activities before tasks are ran
 connect_and_launch(port=config.get('ADVANCED', 'port'))
+resolutionCheck()
 waitUntilGameActive()
 
 def dailies():
@@ -149,7 +150,7 @@ def team_up():
             click('buttons/back', suppress=True, region=regions['back'])
             click_location('neutral')
             wait()
-        logger.info('Opening chat')
+        # logger.info('Opening chat')
         while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
             click('buttons/back', seconds=0, suppress=True, region=regions['back']) # Somehow we open afk rewards occasionally, this will exit that
             click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
@@ -163,7 +164,7 @@ def team_up():
             # Synergy battle hero lending is handled here
             if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
                 x, y = returnxy('teamup/synergy', region=regions['chat_window'])
-                # We wait 3mins between each one else we end up opening and closing the same one repeatadly
+                # We wait 60s between each one else we end up opening and closing the same one repeatadly
                 if x != 0: # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
                     if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 60):
                         logger.info('Synergy Battle found!')
@@ -180,21 +181,21 @@ def team_up():
                             globals()['last_synergy'] = time.time()
                             return
                 else:
-                    logger.info('Synergy button gone!')
+                    logger.info('Synergy button gone!\n')
                     return
         duration = time.time() - start
-        logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
         # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
         click_last('teamup/join', seconds=4, confidence=0.8, region=regions['chat_window'])
         # If ready is not visible after clicking join then it's been disbanded etc so we restart
         if not isVisible('teamup/ready', region=regions['bottom_buttons']):
-            logger.info('Something went wrong, waiting 30s before continuing\n')
+            # logger.info('Something went wrong, waiting 30s before continuing\n')
             # Try a quit just in case
             click('teamup/quit', region=regions['bottom_buttons'], suppress=True)
             click('buttons/confirm', region=regions['confirm_deny'], suppress=True) # to catch 'Reconnect to chat?
             wait(30)
             return
         click('teamup/ready', seconds=4, region=regions['bottom_buttons'])
+        logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!') # Only message after we're in to avoid spam
         # If Quit button is visible 15 cycles after readying up then the host is afk etc so we restart
         while isVisible('teamup/quit', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
@@ -209,7 +210,7 @@ def team_up():
             clickXY(120, 1300)
             clickXY(270, 1300)
             clickXY(450, 1300)
-            click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons'])
+            click('teamup/ready_lobby', suppress=True, confidence=0.8, region=regions['bottom_buttons'])
             break # Break loop otherwise if we miss a button we loop here until battle starts
         while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
