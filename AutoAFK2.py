@@ -704,7 +704,7 @@ if args['abyss']:
     blind_push('abyss')
 
 if args['legend']:
-    blind_push('tower')
+    blind_push('towers')
 
 if args['quest']:
     quest_push()
