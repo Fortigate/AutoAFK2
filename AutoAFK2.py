@@ -21,6 +21,7 @@ parser.add_argument("-a", "--abyss", action='store_true', help = "Run the Trial 
 parser.add_argument("-l", "--legend", action='store_true', help = "Run the Legend Trials retry function")
 parser.add_argument("-t", "--teamup", action='store_true', help = "Run the Team-up function")
 parser.add_argument("-d", "--dailies", action='store_true', help = "Run the Dailies function")
+parser.add_argument("-dr", "--dream", action='store_true', help = "Run the Dream Realm function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
 parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
@@ -691,6 +692,9 @@ if args['abyss']:
 
 if args['legend']:
     blind_push('tower')
+
+if args['dream']:
+    blind_push('dream_realm')
 
 if args['test']:
     quest_push()
