@@ -11,7 +11,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.3.1'
+version = '0.4.1'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
@@ -21,9 +21,10 @@ parser.add_argument("-a", "--abyss", action='store_true', help = "Run the Trial 
 parser.add_argument("-l", "--legend", action='store_true', help = "Run the Legend Trials retry function")
 parser.add_argument("-t", "--teamup", action='store_true', help = "Run the Team-up function")
 parser.add_argument("-d", "--dailies", action='store_true', help = "Run the Dailies function")
+parser.add_argument("-q", "--quest", action='store_true', help = "Runs the Quest running function")
+parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
 parser.add_argument("-dr", "--dream", action='store_true', help = "Run the Dream Realm function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
-parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
 
@@ -157,15 +158,15 @@ def team_up():
             click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
             # Sometimes autoscroll breaks after a while so we do it manually each check
             swipe(1000, 1500, 1000, 500, 500)
-            if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
-                # Prioritise Corrupt Creatures over Synergy battles
-                continue
+            # if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
+            #     # Prioritise Corrupt Creatures over Synergy battles
+            #     continue
             # Synergy battle hero lending is handled here
             if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
                 x, y = returnxy('teamup/synergy', region=regions['chat_window'])
                 # We wait 3mins between each one else we end up opening and closing the same one repeatadly
                 if x != 0: # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
-                    if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 180):
+                    if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 60):
                         logger.info('Synergy Battle found!')
                         clickXY(x, y + 220)
                         if isVisible('buttons/back', region=regions['back']):
@@ -351,12 +352,11 @@ def arena(battles=9):
                 click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
             counter += 1
             timer = 0
-            # Collect Victory Rewards
-            clickXY(200, 550)
-            clickXY(200, 550)
-            clickXY(200, 550)
-            click_location('neutral')
-
+        # Collect Victory Rewards
+        clickXY(200, 550)
+        clickXY(200, 550)
+        clickXY(200, 550)
+        click_location('neutral')
     else:
         logger.info('Issue opening Arena!')
         recover()
@@ -476,8 +476,10 @@ def noble_path():
     click('buttons/main_menu', region=regions['main_menu'], seconds=2)
     click('buttons/noble_path', region=regions['menu_activities'], seconds=2)
 
+    # Noble Path
     if isVisible('buttons/noble_path_active', region=regions['bottom_third'], click=True, seconds=2, grayscale=True) or isVisible('buttons/noble_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
         # This will claim quests in all tabs
+        click('buttons/noble_quests_inactive', grayscale=True, seconds=2)
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
 
@@ -486,11 +488,12 @@ def noble_path():
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
 
+    # Seasonal Noble Path
     if isVisible('buttons/noble_season_active', region=regions['bottom_third'], click=True, seconds=2, grayscale=True) or isVisible('buttons/noble_season_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
         # This will claim quests in all tabs
+        click('buttons/noble_quests_inactive', grayscale=True, seconds=2)
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
-
         # Travelogue
         click('buttons/noble_travelogue_inactive', grayscale=True)
         if isVisible('buttons/claim_all', click=True):
@@ -565,6 +568,9 @@ def blind_push(mode, tower=None):
             if faction == tower:
                 if isVisible("towers/"+faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
                     while True:
+                        if not running.is_set():
+                            running.wait()  # wait until running is set
+                            logger.info('Resuming')
                         click("buttons/abyss_lvl", suppress=True, grayscale=True, confidence=0.8)
                         click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
                         click("labels/tap_to_close", suppress=True, region=regions['bottom_buttons'])
@@ -579,18 +585,26 @@ def blind_push(mode, tower=None):
         victory_counter = 0
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
         logger.info('Auto-retrying Trial of Abyss')
+        click('buttons/main_menu', region=regions['main_menu'], seconds=3)
+        if isVisible('buttons/trial_of_abyss', click=True):
+            pass
+        else:
+            click('buttons/event', region=regions['menu_activities'], seconds=3)
+            while not isVisible('events/abyss', region=regions['bottom_third']):
+                swipe(700, 1800, 250, 1800, 2000)
+            click('events/abyss', region=regions['bottom_third'])
+            click('buttons/abyss_entry', region=regions['bottom_third'])
 
-        clickXY(100, 1800, seconds=4)  # Open AFK Rewards
-        clickXY(550, 1600, seconds=4)  # Open Trial of Abyss
-        clickXY(550, 1600, seconds=4)  # Again in case we just claimed loot
-        while isVisible('labels/trial_of_abyss', click=True): # First click can claim loot so we loop it to amek sure we're opening ToA
+        while isVisible('labels/trial_of_abyss', click=True): # First click can claim loot so we loop it to make sure we're opening ToA
             while True:
                 if not running.is_set():
                     running.wait()  # wait until running is set
                     logger.info('Resuming')
                 click("buttons/abyss_lvl", seconds=0.2, suppress=True)
-                click("buttons/battle", suppress=True, seconds=0.2, region=regions['bottom_buttons'])
-                victory_counter += 1
+                if isVisible("buttons/battle", seconds=0.2, click=True, region=regions['bottom_buttons']):
+                    if victory_counter > 0 and victory_counter % 100 == 0:
+                        logger.info(str(victory_counter) + ' attempts made')
+                    victory_counter += 1
                 click("labels/tap_to_close", suppress=True, seconds=0.2, region=regions['bottom_buttons'])
                 if isVisible("buttons/next", seconds=0.2, click=True, region=regions['bottom_buttons']):
                     logger.info('Stage passed in ' + str(victory_counter) + ' attemps!')
@@ -622,8 +636,9 @@ def blind_push(mode, tower=None):
             logger.info('Dream Realm attempts exhausted.\n')    
 
 # Scans and pushes the various buttons needed to complete story/side quests
-# Very slow, can get stuck if there is a player present at an end point and we get the magnifying glass symbol
+# Very slow, can get stuck if there is a player present at an end point and we get the magnifying glass icon instead of the action icon
 # The order of checks and clicks is important to not get stuck in loops
+#TODO Get chest icon for collecting quest items
 def quest_push():
     logger.info('Pushing Quests!\n')
     while True:
@@ -651,7 +666,6 @@ def quest_push():
         if isVisible('buttons/battle_button', click=True, region=regions['chat_window'], confidence=0.8, seconds=0.2):
             logger.info('Initiating battle')
         swipe(550, 1500, 560, 1510, 250) # Hypofiends battle button won't trigger unless we move a few pixels
-
 
 # Handle launch arguments
 
@@ -691,7 +705,10 @@ if args['abyss']:
     blind_push('abyss')
 
 if args['legend']:
-    blind_push('tower')
+    blind_push('towers')
+
+if args['quest']:
+    quest_push()
 
 if args['dream']:
     blind_push('dream_realm')
