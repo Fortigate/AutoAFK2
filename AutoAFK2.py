@@ -11,7 +11,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.4.1'
+version = '0.4.3'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
@@ -112,6 +112,7 @@ logger.info('Version: ' + version)
 
 # Boot up activities before tasks are ran
 connect_and_launch(port=config.get('ADVANCED', 'port'))
+resolutionCheck()
 waitUntilGameActive()
 
 def dailies():
@@ -141,88 +142,103 @@ def dailies():
         farm_affinity(45)
     logger.info('Dailies done!')
 
+# Bit of an ugly function, we open the Team-Up chat and scan for the orange Join button and the Synergy Battle label for synergy battles
 def team_up():
     timer = 0
     start = time.time()
-    while 1 == 1:
+    while True: # Naughty perma-loop, nested inside another when we call this with startup flags so calling 'return' will start from the top
+
         # First ensure we're at the main map
-        while not isVisible('labels/sunandstars', region=regions['sunandstars']):
+        while not isVisible('labels/sunandstars', region=regions['sunandstars'], seconds=0):
             click('buttons/back', suppress=True, region=regions['back'])
             click_location('neutral')
-            wait()
-        logger.info('Opening chat')
+
+        # Then open team-up chat
+        click('teamup/chat', seconds=2, suppress=True, region=regions['right_sidebar'])  # Open Chat window
+        click('teamup/teamup', suppress=True, region=regions['chat_selection'])  # Open the Team-Up section
+
+        # Loop while searching for 'Join' button
         while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
-            click('buttons/back', seconds=0, suppress=True, region=regions['back']) # Somehow we open afk rewards occasionally, this will exit that
-            click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])
-            isVisible('buttons/confirm', region=regions['confirm_deny'], click=True) # to catch 'Reconnect to chat?'
-            click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])
-            # Sometimes autoscroll breaks after a while so we do it manually each check
-            swipe(1000, 1500, 1000, 500, 500)
-            # if isVisible('teamup/join', seconds=0, region=regions['chat_window']):
-            #     # Prioritise Corrupt Creatures over Synergy battles
-            #     continue
-            # Synergy battle hero lending is handled here
+
+            # If it's been more than 90s we might be stuck so we try these to get back to the chat window
+            if (time.time() - globals()['last_corrupt']) > 300 and (time.time() - globals()['last_synergy']) > 300:
+                click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])  # Ensure we actually have chat open
+                click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])  # Ensure we're in the right section
+                click('buttons/back', seconds=0, suppress=True, region=regions['back'])  # Somehow we open afk rewards occasionally, this will exit that
+                isVisible('buttons/confirm', region=regions['confirm_deny'], click=True)  # to catch 'Reconnect to chat?'
+                swipe(1000, 1500, 1000, 500, 500) # Manually scroll if autoscroll doesn't work
+
+            # Synergy battle hero lending is handled here for reasons
             if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
                 x, y = returnxy('teamup/synergy', region=regions['chat_window'])
-                # We wait 3mins between each one else we end up opening and closing the same one repeatadly
+                # We wait 60s between each one else we can end up opening and closing the same one repeatadly
                 if x != 0: # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
+                    # If green button found and it's been more than 60s since the last Synergy
                     if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 60):
                         logger.info('Synergy Battle found!')
-                        clickXY(x, y + 220)
+                        clickXY(x, y + 220) # 220 is the button distance from the label
                         if isVisible('buttons/back', region=regions['back']):
-                            clickXY(300, 900)
+                            clickXY(300, 900) # Second highest power hero (in case you want to save the primary or guildmates/friends)
                             clickXY(650, 1800)
                             click('buttons/back', suppress=True, region=regions['back'])
                             logger.info('Hero lent\n')
                             globals()['last_synergy'] = time.time()
                             return
                         else:
-                            logger.info('Something went wrong, returning\n')
+                            logger.info('Something went wrong with Synergy Battle, returning\n')
                             globals()['last_synergy'] = time.time()
                             return
                 else:
-                    logger.info('Synergy button gone!')
+                    logger.info('Synergy button gone!\n')
                     return
+
+        # Log start time and click 'Join'
         duration = time.time() - start
-        logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')
-        # logger.info(str(format_timespan(time.time() - globals()['last_corrupt'])) + ' since last corrupt')
         click_last('teamup/join', seconds=4, confidence=0.8, region=regions['chat_window'])
-        # If ready is not visible after clicking join then it's been disbanded etc so we restart
+
+        # If Ready button is not visible after clicking join then it's been disbanded/level locked etc so we restart
         if not isVisible('teamup/ready', region=regions['bottom_buttons']):
-            logger.info('Something went wrong, waiting 30s before continuing\n')
             # Try a quit just in case
             click('teamup/quit', region=regions['bottom_buttons'], suppress=True)
             click('buttons/confirm', region=regions['confirm_deny'], suppress=True) # to catch 'Reconnect to chat?
-            wait(30)
             return
+
+        # Ready up
         click('teamup/ready', seconds=4, region=regions['bottom_buttons'])
+        logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!') # Only message after we're in to avoid spam
+
         # If Quit button is visible 15 cycles after readying up then the host is afk etc so we restart
         while isVisible('teamup/quit', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
             if timer > 15:
-                logger.info('Timeout error!\n')
+                logger.info('Lobby timeout error!\n')
                 click('teamup/quit', seconds=2, region=regions['bottom_buttons'])
                 clickXY(850, 1250, seconds=4)
                 return
+
+        # Deploy Heroes
         while isVisible('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons']):
             logger.info('Deploying heroes')
-            wait()
-            clickXY(120, 1300)
-            clickXY(270, 1300)
-            clickXY(450, 1300)
-            click('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons'])
-            break # Break loop otherwise if we miss a button we loop here until battle starts
+            wait(2) # Wait for the emulator to load new assets after moving to battle screen else first click below doesn't register
+            clickXY(120, 1300, seconds=2)
+            clickXY(270, 1300, seconds=2)
+            clickXY(450, 1300, seconds=2)
+            click('teamup/ready_lobby', suppress=True, confidence=0.8, region=regions['bottom_buttons'])
+            break # Break loop otherwise if we miss a button due to lag we loop here until battle starts
+
+        # Wait until battle finishes
         while not isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
-            if timer > 20:
-                logger.info('Timeout error!\n')
+            if timer > 30:
+                logger.info('Battle timeout error!\n')
                 click_location('neutral') # Neutral taps to try and get back to main map if something went wrong
                 return
         click('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons'])
+
+        # Finish up and start the loop again
         timer = 0
         logger.info('Battle complete!\n')
         globals()['last_corrupt'] = time.time()
-        wait(3)
         return
 
 def claim_afk_rewards():
@@ -468,6 +484,8 @@ def farm_affinity(heroes=40):
             logger.info('Affinity farmed!\n')
     else:
         logger.info('Something went wrong opening hero affinity!')
+        timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+        save_screenshot('affinity_opening_issue_' + timestamp)
         recover()
 
 def noble_path():

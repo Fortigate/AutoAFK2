@@ -95,6 +95,22 @@ def waitUntilGameActive():
             sys.exit()
     logger.info('Game Loaded!\n')
 
+def resolutionCheck():
+    resolution_lines = device.shell('wm size').split('\n')
+    physical_resolution = resolution_lines[0].split(' ')
+    override_resolution = resolution_lines[1].split(' ')
+
+    if override_resolution[0] != '':
+        if not str(override_resolution[2]).strip() == '1920x1080' and not str(
+                override_resolution[2]).strip() == '1080x1920':
+            logger.info('Unsupported Override Resolution! (' + str(override_resolution[2]).strip() + '). Please change your resolution to 1920x1080')
+            logger.info('We will try and scale the image but non-16:9 formats will likely have issues with image detection')
+    else:
+        if not str(physical_resolution[2]).strip() == '1920x1080' and not str(
+                physical_resolution[2]).strip() == '1080x1920':
+            logger.info('Unsupported Physical Resolution! (' + str(physical_resolution[2]).strip() + '). Please change your resolution to 1920x1080')
+            logger.info('We will try and scale the image but non-16:9 formats will likely have issues with image detection')
+
 # Clicks on the given XY coordinates
 def clickXY(x, y, seconds=1):
     device.input_tap(x, y)
