@@ -643,7 +643,7 @@ def blind_push(mode, tower=None):
             if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5):
                 if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=3):
                     while not isVisible('labels/tap_to_close'):
-                        wait()
+                        click_location('neutral')
                     while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
                         click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
                     logger.info('Battle complete!')
