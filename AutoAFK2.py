@@ -11,7 +11,7 @@ last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before open
 global last_corrupt
 last_corrupt = time.time()
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.4.3'
+version = '0.4.4'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
@@ -138,7 +138,7 @@ def dailies():
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
-        farm_affinity(45)
+        farm_affinity(50)
     logger.info('Dailies done!')
 
 # Bit of an ugly function, we open the Team-Up chat and scan for the orange Join button and the Synergy Battle label for synergy battles
@@ -159,13 +159,16 @@ def team_up():
         # Loop while searching for 'Join' button
         while not isVisible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
 
-            # If it's been more than 90s we might be stuck so we try these to get back to the chat window
+            # If it's been more than 300s we might be stuck so we try these to get back to the chat window
             if (time.time() - globals()['last_corrupt']) > 300 and (time.time() - globals()['last_synergy']) > 300:
                 click('teamup/chat', seconds=0, suppress=True, region=regions['right_sidebar'])  # Ensure we actually have chat open
                 click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])  # Ensure we're in the right section
                 click('buttons/back', seconds=0, suppress=True, region=regions['back'])  # Somehow we open afk rewards occasionally, this will exit that
                 isVisible('buttons/confirm', region=regions['confirm_deny'], click=True)  # to catch 'Reconnect to chat?'
-                swipe(1000, 1500, 1000, 500, 500) # Manually scroll if autoscroll doesn't work
+
+            # Periodically swipe chat down in case autoscroll stopped working
+            if (time.time() - globals()['last_corrupt']) % 5 == 0:
+                swipe(1000, 1500, 1000, 500, 500)
 
             # Synergy battle hero lending is handled here for reasons
             if isVisible('teamup/synergy', seconds=0, region=regions['chat_window']):
@@ -219,9 +222,9 @@ def team_up():
         while isVisible('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons']):
             logger.info('Deploying heroes')
             wait(2) # Wait for the emulator to load new assets after moving to battle screen else first click below doesn't register
-            clickXY(120, 1300, seconds=2)
-            clickXY(270, 1300, seconds=2)
-            clickXY(450, 1300, seconds=2)
+            clickXY(120, 1300)
+            clickXY(270, 1300)
+            clickXY(450, 1300)
             click('teamup/ready_lobby', suppress=True, confidence=0.8, region=regions['bottom_buttons'])
             break # Break loop otherwise if we miss a button due to lag we loop here until battle starts
 
@@ -232,11 +235,11 @@ def team_up():
                 logger.info('Battle timeout error!\n')
                 click_location('neutral') # Neutral taps to try and get back to main map if something went wrong
                 return
-        click('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons'])
+        if isVisible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons'], click=True):
+            logger.info('Battle complete!\n')
 
         # Finish up and start the loop again
         timer = 0
-        logger.info('Battle complete!\n')
         globals()['last_corrupt'] = time.time()
         return
 
@@ -459,7 +462,7 @@ def quests():
         recover()
         return
 
-def farm_affinity(heroes=40):
+def farm_affinity(heroes=50):
     logger.info('Clicking every hero 3 times for +6 affinity')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
@@ -678,12 +681,15 @@ def quest_push():
         if isVisible('buttons/tap_and_hold', region=regions['chat_window'], seconds=0.2):
             logger.info('Holding button')
             swipe(550, 1250, 550, 1250, 4000)  # Hacky way to hold it down
-        if isVisible('buttons/enter', seconds=0.2):
+        if isVisible('buttons/enter', click=True, seconds=0.2):
             logger.info('Entering location')
+        if isVisible('buttons/chest', click=True, seconds=0.2):
+            logger.info('Collecting Chest')
         if isVisible('buttons/battle_button', click=True, region=regions['chat_window'], confidence=0.8, seconds=0.2):
             logger.info('Initiating battle')
         swipe(550, 1500, 560, 1510, 250) # Hypofiends battle button won't trigger unless we move a few pixels
 
+# Placeholder for when I get round to it
 def run_lab():
     if lab is not completed:
         run_lab()
@@ -733,7 +739,7 @@ if args['quest']:
     quest_push()
 
 if args['test']:
-    quest_push()
+    farm_affinity()
 
 # If no function launch argument we pop the UI
 
