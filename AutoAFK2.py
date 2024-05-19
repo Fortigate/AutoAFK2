@@ -694,9 +694,9 @@ def quest_push():
         swipe(550, 1500, 560, 1510, 250) # Hypofiends battle button won't trigger unless we move a few pixels
 
 # Placeholder for when I get round to it
-def run_lab():
-    if lab is not completed:
-        run_lab()
+#def run_lab():
+#    if lab is not completed:
+#        run_lab()
 
 
 # Handle launch arguments
