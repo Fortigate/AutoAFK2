@@ -10,6 +10,10 @@ global last_synergy
 last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before opening the first
 global last_corrupt
 last_corrupt = time.time()
+global afk_stage_defeats
+afk_stage_defeats = 0
+global second_victory
+second_victory = False
 # Version output so I can work out which version I'm actually running for debugging
 version = '0.4.4'
 # Current time in UTC for tracking which towers/events are open
@@ -541,7 +545,7 @@ def claim_events():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
-def blind_push(mode, tower=None):
+def blind_push(mode, tower=None, victory=True):
     if mode == "towers":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
         logger.info('Blind-pushing towers')
@@ -653,12 +657,94 @@ def blind_push(mode, tower=None):
                     break
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-            logger.info('Dream Realm attempts exhausted.\n')    
+            logger.info('Dream Realm attempts exhausted.\n')
+
+    if mode == 'afkstage_singles':
+        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
+            if victory is True:
+                click('buttons/records', seconds=2)
+                click('buttons/copy', seconds=2)
+                click('buttons/confirm', seconds=3, suppress=True)
+            click('buttons/battle', region=regions['bottom_buttons'])
+            click('buttons/confirm', seconds=3, suppress=True)
+            while not isVisible('buttons/back'):
+                wait()
+            red_value = return_pixel_colour(550, 200, 0)
+            if red_value > 190:
+                globals()['afk_stage_defeats'] = 0
+                logger.info('Victory! Reloading formation')
+                clickXY(750, 1800, seconds=3)
+                blind_push('afkstage_singles', victory=True)
+            else:
+                globals()['afk_stage_defeats'] += 1
+                logger.info('Defeat! (' + str(globals()['afk_stage_defeats']) + '/25)')
+                clickXY(750, 1800, seconds=3)
+                blind_push('afkstage_singles', victory=False)
+
+        else:
+            logger.info('Something went wrong opening AFK Stages!')
+            recover()
+
+    if mode == 'afkstage_multis':
+        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
+            if victory is True:
+                click('buttons/records', seconds=2)
+                click('buttons/copy', seconds=2)
+                click('buttons/confirm', seconds=3, suppress=True)
+            click('buttons/battle', region=regions['bottom_buttons'])
+            click('buttons/confirm', seconds=3, suppress=True)
+
+            if globals()['second_victory'] is True:
+                # TODO Second defeat still uses 'Continue'
+                while not isVisible('buttons/back'):
+                    wait(2)
+            else:
+                while not isVisible('buttons/continue', region=regions['bottom_buttons']):
+                    wait(2)
+
+            if globals()['second_victory'] is True:
+                red_value = return_pixel_colour(550, 200, 0)
+            else:
+                red_value = return_pixel_colour(550, 980, 0)
+
+            if red_value > 190 and globals()['second_victory'] is True:
+                globals()['afk_stage_defeats'] = 0
+                logger.info('Second round Victory! Reloading formation')
+                clickXY(750, 1800, seconds=3)
+                globals()['second_victory'] = False
+                blind_push('afkstage_multis', victory=True)
+            elif red_value > 190:
+                globals()['afk_stage_defeats'] = 0
+                logger.info('First round Victory!')
+                clickXY(750, 1800, seconds=3)
+                globals()['second_victory'] = True
+                blind_push('afkstage_multis', victory=False)
+            else:
+                globals()['afk_stage_defeats'] += 1
+                logger.info('Defeat! (' + str(globals()['afk_stage_defeats']) + '/25)')
+                clickXY(750, 1800, seconds=3)
+                blind_push('afkstage_multis', victory=False)
+
+        else:
+            logger.info('Something went wrong opening AFK Stages!')
+            recover()
+
+def open_afk_stages(singles=True):
+    clickXY(100, 1800, seconds=4)  # Open AFK Rewards
+    if singles is True:
+        logger.info('Blind-pushing Single AFK Stages')
+        clickXY(715, 1600, seconds=4)  # Battle
+        clickXY(715, 1600, seconds=4)  # Battle (again since first can claim afk rewards when its >1h)
+    else:
+        logger.info('Blind-pushing Multi AFK Stages')
+        clickXY(370, 1600, seconds=4)  # Battle
+        clickXY(370, 1600, seconds=4)  # Battle (again since first can claim afk rewards when its >1h)
+
 
 # Scans and pushes the various buttons needed to complete story/side quests
 # Very slow, can get stuck if there is a player present at an end point and we get the magnifying glass icon instead of the action icon
 # The order of checks and clicks is important to not get stuck in loops
-#TODO Get chest icon for collecting quest items
+#TODO Get chest icon for collecting quest items / First run teleport prompt
 def quest_push():
     logger.info('Pushing Quests!\n')
     while True:
@@ -739,7 +825,9 @@ if args['quest']:
     quest_push()
 
 if args['test']:
-    farm_affinity()
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    open_afk_stages(singles=False)
+    blind_push('afkstage_multis')
 
 # If no function launch argument we pop the UI
 
