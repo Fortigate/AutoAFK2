@@ -29,6 +29,7 @@ parser.add_argument("-q", "--quest", action='store_true', help = "Runs the Quest
 parser.add_argument("-afks", action='store_true', help = "Singles")
 parser.add_argument("-afkm", action='store_true', help = "Multis")
 parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
+parser.add_argument("-dr", "--dream", action='store_true', help = "Run the Dream Realm function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
@@ -554,7 +555,7 @@ def blind_push(mode, tower=None, victory=True):
         factions = ["Light", "Wilder", "Graveborn", "Mauler"]
         for faction in factions:
             if isVisible("towers/"+faction.lower(), confidence=0.94, click=True, seconds=4, yrelative=-20):
-                if isVisible("towers/floor_info", click=True, region=(15, 750, 1050, 1000), seconds=3, yrelative=-50):
+                if isVisible("towers/floor_info", click=True, region=(15, 1060, 1050, 600), seconds=3, yrelative=-50):
                     wait(3)
                     if isVisible("buttons/battle", click=True):
                         back_occurence = 0
@@ -647,8 +648,11 @@ def blind_push(mode, tower=None, victory=True):
         for _ in range(10):
             if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5):
                 if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=3):
-                    while not isVisible('labels/tap_to_close'):
-                        wait()
+                    while not isVisible('labels/tap_to_close', region=regions['bottom_buttons']):
+                        if isVisible('buttons/battle', region=regions['bottom_buttons']):
+                            break
+                        else:
+                         click_location('neutral')
                     while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
                         click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
                     logger.info('Battle complete!')
@@ -788,9 +792,9 @@ def quest_push():
         swipe(550, 1500, 560, 1510, 250) # Hypofiends battle button won't trigger unless we move a few pixels
 
 # Placeholder for when I get round to it
-def run_lab():
-    if lab is not completed:
-        run_lab()
+#def run_lab():
+#    if lab is not completed:
+#        run_lab()
 
 
 # Handle launch arguments
@@ -831,15 +835,18 @@ if args['abyss']:
     blind_push('abyss')
 
 if args['legend']:
-    blind_push('tower')
+    blind_push('towers')
 
 if args['quest']:
     quest_push()
 
-if args['quest']:
-    logger.info('running test function(s)')
 
 if args['afkm']:
+=======
+if args['dream']:
+    blind_push('dream_realm')
+
+if args['test']:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     open_afk_stages(singles=False)
     blind_push('afkstage_multis')
