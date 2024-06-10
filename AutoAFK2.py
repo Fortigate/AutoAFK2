@@ -15,7 +15,7 @@ afk_stage_defeats = 0
 global second_victory
 second_victory = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.4.4'
+version = '0.5.2'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
@@ -26,6 +26,8 @@ parser.add_argument("-l", "--legend", action='store_true', help = "Run the Legen
 parser.add_argument("-t", "--teamup", action='store_true', help = "Run the Team-up function")
 parser.add_argument("-d", "--dailies", action='store_true', help = "Run the Dailies function")
 parser.add_argument("-q", "--quest", action='store_true', help = "Runs the Quest running function")
+parser.add_argument("-afks", action='store_true', help = "Singles")
+parser.add_argument("-afkm", action='store_true', help = "Multis")
 parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
@@ -47,7 +49,7 @@ else:
 from threading import Event
 import keyboard
 
-hotkey = 'k'
+hotkey = 'F10'
 
 running = Event()
 running.set()  # at the start, it is running
@@ -169,9 +171,6 @@ def team_up():
                 click('teamup/teamup', seconds=0, suppress=True, region=regions['chat_selection'])  # Ensure we're in the right section
                 click('buttons/back', seconds=0, suppress=True, region=regions['back'])  # Somehow we open afk rewards occasionally, this will exit that
                 isVisible('buttons/confirm', region=regions['confirm_deny'], click=True)  # to catch 'Reconnect to chat?'
-
-            # Periodically swipe chat down in case autoscroll stopped working
-            if (time.time() - globals()['last_corrupt']) % 5 == 0:
                 swipe(1000, 1500, 1000, 500, 500)
 
             # Synergy battle hero lending is handled here for reasons
@@ -180,7 +179,7 @@ def team_up():
                 # We wait 60s between each one else we can end up opening and closing the same one repeatadly
                 if x != 0: # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
                     # If green button found and it's been more than 60s since the last Synergy
-                    if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 60):
+                    if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 120):
                         logger.info('Synergy Battle found!')
                         clickXY(x, y + 220) # 220 is the button distance from the label
                         if isVisible('buttons/back', region=regions['back']):
@@ -661,6 +660,9 @@ def blind_push(mode, tower=None, victory=True):
 
     if mode == 'afkstage_singles':
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
+            if globals()['afk_stage_defeats'] >= 25:
+                logger.info('25 defeats, exiting!')
+                exit(0)
             if victory is True:
                 click('buttons/records', seconds=2)
                 click('buttons/copy', seconds=2)
@@ -687,6 +689,9 @@ def blind_push(mode, tower=None, victory=True):
 
     if mode == 'afkstage_multis':
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
+            if globals()['afk_stage_defeats'] >= 25:
+                logger.info('25 defeats, exiting!')
+                exit(0)
             if victory is True:
                 click('buttons/records', seconds=2)
                 click('buttons/copy', seconds=2)
@@ -696,7 +701,7 @@ def blind_push(mode, tower=None, victory=True):
 
             if globals()['second_victory'] is True:
                 # TODO Second defeat still uses 'Continue'
-                while not isVisible('buttons/back'):
+                while not isVisible('buttons/back', region=regions['bottom_buttons']) and not isVisible('buttons/continue', region=regions['bottom_buttons']):
                     wait(2)
             else:
                 while not isVisible('buttons/continue', region=regions['bottom_buttons']):
@@ -704,9 +709,16 @@ def blind_push(mode, tower=None, victory=True):
 
             if globals()['second_victory'] is True:
                 red_value = return_pixel_colour(550, 200, 0)
+                blue_value = return_pixel_colour(550, 980, 2)
             else:
                 red_value = return_pixel_colour(550, 980, 0)
+                blue_value = 0 # Anti 'referenced before assignment' value
 
+            if blue_value > 150 and globals()['second_victory'] is True:
+                globals()['afk_stage_defeats'] += 1
+                logger.info('Defeat! (' + str(globals()['afk_stage_defeats']) + '/25)')
+                clickXY(750, 1800, seconds=3)
+                blind_push('afkstage_multis', victory=False)
             if red_value > 190 and globals()['second_victory'] is True:
                 globals()['afk_stage_defeats'] = 0
                 logger.info('Second round Victory! Reloading formation')
@@ -824,10 +836,18 @@ if args['legend']:
 if args['quest']:
     quest_push()
 
-if args['test']:
+if args['quest']:
+    logger.info('running test function(s)')
+
+if args['afkm']:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     open_afk_stages(singles=False)
     blind_push('afkstage_multis')
+
+if args['afks']:
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    open_afk_stages(singles=True)
+    blind_push('afkstage_singles')
 
 # If no function launch argument we pop the UI
 
