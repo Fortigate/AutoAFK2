@@ -523,6 +523,17 @@ def noble_path():
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
 
+    # Fabled Path
+    if isVisible('buttons/fabled_path_active', region=regions['bottom_third'], click=True, seconds=2, grayscale=True) or isVisible('buttons/fabled_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+        # This will claim quests in all tabs
+        click('buttons/noble_quests_inactive', grayscale=True, seconds=2)
+        if isVisible('buttons/claim_all', click=True):
+            clickXY(1000, 1800)
+        # Travelogue
+        click('buttons/noble_trek_inactive', grayscale=True)
+        if isVisible('buttons/claim_all', click=True):
+            clickXY(1000, 1800)
+
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Noble path collected!\n')
     else:
@@ -536,6 +547,7 @@ def claim_events():
     click('buttons/event', region=regions['menu_activities'], seconds=3)
 
     # All Heroes
+    swipe(1000, 1800, 250, 1800, 500)
     if isVisible('events/all_heroes', click=True, seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
         if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
             logger.info('All Heroes claimed')
@@ -840,21 +852,21 @@ if args['legend']:
 if args['quest']:
     quest_push()
 
-
-if args['afkm']:
-=======
 if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-    open_afk_stages(singles=False)
-    blind_push('afkstage_multis')
+    noble_path()
 
 if args['afks']:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     open_afk_stages(singles=True)
     blind_push('afkstage_singles')
+
+if args['afkm']:
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    open_afk_stages(singles=True)
+    blind_push('afkstage_multis')
 
 # If no function launch argument we pop the UI
 
