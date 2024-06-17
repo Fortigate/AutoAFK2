@@ -15,7 +15,7 @@ afk_stage_defeats = 0
 global second_victory
 second_victory = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.5.6'
+version = '0.5.2'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
@@ -29,6 +29,7 @@ parser.add_argument("-q", "--quest", action='store_true', help = "Runs the Quest
 parser.add_argument("-afks", action='store_true', help = "Singles")
 parser.add_argument("-afkm", action='store_true', help = "Multis")
 parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
+parser.add_argument("-dr", "--dream", action='store_true', help = "Run the Dream Realm function")
 parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
@@ -522,17 +523,6 @@ def noble_path():
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
 
-    # Fabled Path
-    if isVisible('buttons/fabled_path_active', region=regions['bottom_third'], click=True, seconds=2, grayscale=True) or isVisible('buttons/fabled_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
-        # This will claim quests in all tabs
-        click('buttons/noble_quests_inactive', grayscale=True, seconds=2)
-        if isVisible('buttons/claim_all', click=True):
-            clickXY(1000, 1800)
-        # Travelogue
-        click('buttons/noble_trek_inactive', grayscale=True)
-        if isVisible('buttons/claim_all', click=True):
-            clickXY(1000, 1800)
-
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Noble path collected!\n')
     else:
@@ -546,7 +536,6 @@ def claim_events():
     click('buttons/event', region=regions['menu_activities'], seconds=3)
 
     # All Heroes
-    swipe(1000, 1800, 250, 1800, 500)
     if isVisible('events/all_heroes', click=True, seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
         if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
             logger.info('All Heroes claimed')
@@ -566,27 +555,18 @@ def blind_push(mode, tower=None, victory=True):
         factions = ["Light", "Wilder", "Graveborn", "Mauler"]
         for faction in factions:
             if isVisible("towers/"+faction.lower(), confidence=0.94, click=True, seconds=4, yrelative=-20):
-                if isVisible("towers/lvl", click=True, region=(15, 750, 1050, 1000), grayscale=True, confidence=0.8, seconds=3, yrelative=-50):
+                if isVisible("towers/floor_info", click=True, region=(15, 1060, 1050, 600), seconds=3, yrelative=-50):
                     wait(3)
-                    if isVisible("buttons/battle"):
-                        logger.info('Loading formation')
-                        click('buttons/records', seconds=2)
-                        click('buttons/copy', seconds=2)
-                        click('buttons/confirm', seconds=4, suppress=True)
-                        click('buttons/battle', seconds=2)
+                    if isVisible("buttons/battle", click=True):
                         back_occurence = 0
                         while True:
                             if isVisible("labels/tap_to_close", click=True, seconds=2):
                                 click("buttons/back")
                                 break
-                            elif isVisible("buttons/next", click=True, retry=4):
+                            elif isVisible("buttons/next", click=True, retry=3):
                                 logger.info(faction + ' win detected, moving to next floor')
                                 wait(3)
-                                back_occurence = 0
-                                logger.info('Loading formation')
-                                click('buttons/records', seconds=2)
-                                click('buttons/copy', seconds=2)
-                                click('buttons/confirm', seconds=4, suppress=True)
+                                back_occurence=0
                                 click("buttons/battle", seconds=3)
                             elif isVisible("buttons/back"):
                                 if back_occurence == 0:
@@ -668,8 +648,11 @@ def blind_push(mode, tower=None, victory=True):
         for _ in range(10):
             if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5):
                 if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=3):
-                    while not isVisible('labels/tap_to_close'):
-                        wait()
+                    while not isVisible('labels/tap_to_close', region=regions['bottom_buttons']):
+                        if isVisible('buttons/battle', region=regions['bottom_buttons']):
+                            break
+                        else:
+                         click_location('neutral')
                     while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
                         click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
                     logger.info('Battle complete!')
@@ -681,13 +664,13 @@ def blind_push(mode, tower=None, victory=True):
 
     if mode == 'afkstage_singles':
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
-            if globals()['afk_stage_defeats'] >= 20:
-                logger.info('20 defeats, exiting!')
+            if globals()['afk_stage_defeats'] >= 25:
+                logger.info('25 defeats, exiting!')
                 exit(0)
             if victory is True:
                 click('buttons/records', seconds=2)
                 click('buttons/copy', seconds=2)
-                click('buttons/confirm', seconds=4, suppress=True)
+                click('buttons/confirm', seconds=3, suppress=True)
             click('buttons/battle', region=regions['bottom_buttons'])
             click('buttons/confirm', seconds=3, suppress=True)
             while not isVisible('buttons/back'):
@@ -710,8 +693,8 @@ def blind_push(mode, tower=None, victory=True):
 
     if mode == 'afkstage_multis':
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
-            if globals()['afk_stage_defeats'] >= 20:
-                logger.info('20 defeats, exiting!')
+            if globals()['afk_stage_defeats'] >= 25:
+                logger.info('25 defeats, exiting!')
                 exit(0)
             if victory is True:
                 click('buttons/records', seconds=2)
@@ -743,7 +726,7 @@ def blind_push(mode, tower=None, victory=True):
             if red_value > 190 and globals()['second_victory'] is True:
                 globals()['afk_stage_defeats'] = 0
                 logger.info('Second round Victory! Reloading formation')
-                clickXY(750, 1800, seconds=4)
+                clickXY(750, 1800, seconds=3)
                 globals()['second_victory'] = False
                 blind_push('afkstage_multis', victory=True)
             elif red_value > 190:
@@ -809,9 +792,9 @@ def quest_push():
         swipe(550, 1500, 560, 1510, 250) # Hypofiends battle button won't trigger unless we move a few pixels
 
 # Placeholder for when I get round to it
-def run_lab():
-    if lab is not completed:
-        run_lab()
+#def run_lab():
+#    if lab is not completed:
+#        run_lab()
 
 
 # Handle launch arguments
@@ -852,16 +835,18 @@ if args['abyss']:
     blind_push('abyss')
 
 if args['legend']:
-    blind_push('tower')
+    blind_push('towers')
 
 if args['quest']:
     quest_push()
 
-if args['test']:
-    logger.info('running test function(s)')
-    claim_events()
 
 if args['afkm']:
+=======
+if args['dream']:
+    blind_push('dream_realm')
+
+if args['test']:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     open_afk_stages(singles=False)
     blind_push('afkstage_multis')
