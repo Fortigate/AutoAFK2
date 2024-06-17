@@ -119,7 +119,7 @@ def clickXY(x, y, seconds=1):
 # Back button/neutral location etc can be called by name to make it a bit cleaner
 def click_location(location, seconds=1):
     locations = {
-        'neutral': (420, 35)
+        'neutral': (420, 5)
     }
 
     clickXY(locations[location][0], locations[location][1])
