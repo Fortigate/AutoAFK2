@@ -15,7 +15,7 @@ afk_stage_defeats = 0
 global second_victory
 second_victory = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.5.2'
+version = '0.6.1'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 
@@ -121,6 +121,7 @@ connect_and_launch(port=config.get('ADVANCED', 'port'))
 resolutionCheck()
 waitUntilGameActive()
 
+# TODO Add single card pull and SA
 def dailies():
     if config.getboolean('ACTIVITIES', 'claim_afk'):
         claim_afk_rewards()
@@ -134,6 +135,8 @@ def dailies():
         dream_realm()
     if config.getint('ACTIVITIES', 'arena_battles') > 0:
         arena(config.getint('ACTIVITIES', 'arena_battles'))
+    if config.getboolean('ACTIVITIES', 'single_recruit'):
+        single_recruit()
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         quests()
     if config.getboolean('ACTIVITIES', 'claim_events'):
@@ -279,6 +282,7 @@ def friend_points_collect():
     logger.info('Claiming Friend Gifts')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
+    wait(2) # For things to load
     click('buttons/main_menu', region=regions['main_menu'])
     click('buttons/friends', region=regions['menu_activities'], seconds=2)
 
@@ -393,27 +397,26 @@ def dream_realm():
 
     clickXY(450, 1825, seconds=3)
     click('buttons/dream_realm', region=regions['battle_modes'], seconds=3)
+
     # First collect rewards
     if isVisible('buttons/battle', region=regions['bottom_buttons']):
         logger.info('Collecting previous round rewards')
-        clickXY(1020, 280, seconds=5)
-        clickXY(1020, 280, seconds=2)
-        clickXY(550, 1800, seconds=2)
+        click('buttons/dr_rewards', region=regions['top_third'], seconds=4)
+        clickXY(550, 1800, seconds=2) # Clear loot
         click('buttons/back2', region=regions['back'], seconds=3)
     else:
         logger.info('issue collecting rewards!')
         recover()
         return
+
     # Then attempt a single battle
     if isVisible('buttons/battle', region=regions['bottom_buttons']):
         logger.info('Battling Dream Realm')
         click('buttons/battle', region=regions['bottom_buttons'], seconds=5)
-        click('buttons/battle', region=regions['bottom_buttons'], seconds=3)
-        while not isVisible('labels/tap_to_close'):
-            wait()
-            click_location('neutral')
+        click('buttons/battle', region=regions['bottom_buttons'], seconds=5)
+        while not isVisible('labels/tap_to_close', confidence=0.8, click=True):
             timer += 1
-            if timer > 40:
+            if timer > 15:
                 logger.info('Dream Realm timeout!')
                 recover()
                 return
@@ -428,6 +431,30 @@ def dream_realm():
         logger.info('Issue collecting rewards!')
         recover()
         return
+
+def single_recruit():
+    logger.info('Attempting a single reruitment')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+
+    # Navigate and open all hero recruitment
+    clickXY(300, 1850, seconds=6)
+    clickXY(420, 700, seconds=6)
+    click('buttons/all_hero_recruitment', seconds=5)
+
+    # Perform recruit, lots of long waits here as the animations are slow before we stabilise again
+    if isVisible('labels/all_hero_recruitment'):
+        clickXY(250, 1550)
+        click('buttons/continue2') # long wait for animation
+        wait(15)
+        click('buttons/back')
+        click('buttons/back2', seconds=3)
+        click('buttons/back2')
+        logger.info('Single recruitment complete!\n')
+    else:
+        logger.info('Issue doing single recruitment!')
+        recover()
+        return
+
 
 def quests():
     logger.info('Collecting Quests')
@@ -547,11 +574,20 @@ def claim_events():
     click('buttons/event', region=regions['menu_activities'], seconds=3)
 
     # All Heroes
-    swipe(1000, 1800, 250, 1800, 500)
+    if not isVisible('events/all_heroes', seconds=2) or not isVisible('events/all_heroes_inactive', seconds=2):
+        swipe(1000, 1800, 250, 1800, 500) # If we can't see it swipe the bar left
     if isVisible('events/all_heroes', click=True, seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
         if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
             logger.info('All Heroes claimed')
             click_location('neutral')
+
+    # Fishing Diary
+    if not isVisible('events/fishing_diary_inactive', seconds=2, region=regions['bottom_buttons']):
+        swipe(1000, 1800, 250, 1800, 500) # If we can't see it swipe the bar left
+    if isVisible('events/fishing_diary_inactive', click=True, seconds=3, region=regions['bottom_buttons']):
+        if isVisible('buttons/collect', click=True, confidence=0.8):
+            logger.info('Fishing Diary claimed')
+
     click('buttons/back', region=regions['back'])
     click('buttons/back', region=regions['back'])
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
@@ -676,7 +712,7 @@ def blind_push(mode, tower=None, victory=True):
 
     if mode == 'afkstage_singles':
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
-            if globals()['afk_stage_defeats'] >= 25:
+            if globals()['afk_stage_defeats'] >= 20:
                 logger.info('25 defeats, exiting!')
                 exit(0)
             if victory is True:
@@ -705,8 +741,8 @@ def blind_push(mode, tower=None, victory=True):
 
     if mode == 'afkstage_multis':
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
-            if globals()['afk_stage_defeats'] >= 25:
-                logger.info('25 defeats, exiting!')
+            if globals()['afk_stage_defeats'] >= 20:
+                logger.info('20 defeats, exiting!')
                 exit(0)
             if victory is True:
                 click('buttons/records', seconds=2)
@@ -856,7 +892,7 @@ if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    noble_path()
+    single_recruit()
 
 if args['afks']:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
