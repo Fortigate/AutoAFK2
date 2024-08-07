@@ -18,19 +18,23 @@ second_victory = False
 version = '0.6.1'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
+# Game version to launch
+global server
+server = 'com.farlightgames.igame.gp'
 
 # Configure launch arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("-a", "--abyss", action='store_true', help = "Run the Trial of Abyss retry function")
-parser.add_argument("-l", "--legend", action='store_true', help = "Run the Legend Trials retry function")
-parser.add_argument("-t", "--teamup", action='store_true', help = "Run the Team-up function")
-parser.add_argument("-d", "--dailies", action='store_true', help = "Run the Dailies function")
-parser.add_argument("-q", "--quest", action='store_true', help = "Runs the Quest running function")
-parser.add_argument("-afks", action='store_true', help = "Singles")
-parser.add_argument("-afkm", action='store_true', help = "Multis")
-parser.add_argument("-test", "--test", action='store_true', help = "Used for testing functions")
-parser.add_argument("-dr", "--dream", action='store_true', help = "Run the Dream Realm function")
-parser.add_argument("-c", "--config", metavar="CONFIG", default = "settings.ini", help = "Define alternative settings file to load")
+parser.add_argument("-a", "--abyss", action='store_true', help="Run the Trial of Abyss retry function")
+parser.add_argument("-l", "--legend", action='store_true', help="Run the Legend Trials retry function")
+parser.add_argument("-t", "--teamup", action='store_true', help="Run the Team-up function")
+parser.add_argument("-d", "--dailies", action='store_true', help="Run the Dailies function")
+parser.add_argument("-q", "--quest", action='store_true', help="Runs the Quest running function")
+parser.add_argument("-s", "--server", choices=['global', 'vn'], default='global', help="Select alernative game servers")
+parser.add_argument("-afks", action='store_true', help="Singles")
+parser.add_argument("-afkm", action='store_true', help="Multis")
+parser.add_argument("-test", "--test", action='store_true', help="Used for testing functions")
+parser.add_argument("-dr", "--dream", action='store_true', help="Run the Dream Realm function")
+parser.add_argument("-c", "--config", metavar="CONFIG", default="settings.ini", help="Define alternative settings file to load")
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
 
@@ -40,6 +44,10 @@ if args['config']:
 else:
     settings = os.path.join(cwd, 'settings.ini')
 config.read(settings)
+
+# Change server if necessary
+if args['server'] == 'vn':
+    globals()['server'] = 'com.farlightgames.igame.gp.vn'
 
 # Make a nice name for the output log file
 if settings == 'settings.ini':
@@ -117,7 +125,7 @@ logger.info('Loaded settings file: ' + str(settings.split('\\')[-1]))
 logger.info('Version: ' + version)
 
 # Boot up activities before tasks are ran
-connect_and_launch(port=config.get('ADVANCED', 'port'))
+connect_and_launch(port=config.get('ADVANCED', 'port'), server=globals()['server'])
 resolutionCheck()
 waitUntilGameActive()
 
@@ -574,12 +582,16 @@ def claim_events():
     click('buttons/event', region=regions['menu_activities'], seconds=3)
 
     # All Heroes
-    if not isVisible('events/all_heroes', seconds=2) or not isVisible('events/all_heroes_inactive', seconds=2):
-        swipe(1000, 1800, 250, 1800, 500) # If we can't see it swipe the bar left
     if isVisible('events/all_heroes', click=True, seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
         if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
             logger.info('All Heroes claimed')
             click_location('neutral')
+    elif not isVisible('events/all_heroes', seconds=2) or not isVisible('events/all_heroes_inactive', seconds=2):
+        swipe(1000, 1800, 250, 1800, 500, seconds=2) # If we can't see it swipe the bar left
+        if isVisible('events/all_heroes', click=True, seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
+            if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
+                logger.info('All Heroes claimed')
+                click_location('neutral')
 
     # Fishing Diary
     if not isVisible('events/fishing_diary_inactive', seconds=2, region=regions['bottom_buttons']):
@@ -687,25 +699,32 @@ def blind_push(mode, tower=None, victory=True):
             recover()
 
     if mode == "dream_realm":
+        # TODO: rewrite, handle paid attempts and battle complete detection, and no battles left detection
         logger.info('Auto-retrying Dream Realm')
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
         clickXY(450, 1825, seconds=3)
         click('buttons/dream_realm', region=regions['battle_modes'], seconds=3)
         
-        for _ in range(10):
-            if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5):
-                if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=3):
+        for _ in range(6):
+            if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5): # Enter battle screen
+                logger.info('found')
+                if isVisible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=3): # Start battle
                     while not isVisible('labels/tap_to_close', region=regions['bottom_buttons']):
                         if isVisible('buttons/battle', region=regions['bottom_buttons']):
+                            logger.info('break')
+                            break
+                        if isVisible('buttons/deny', click=True):
+                            logger.info('break2')
                             break
                         else:
                          click_location('neutral')
-                    while isVisible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
+                    while isVisible('labels/tap_to_close', region=regions['bottom_buttons'], click=True): # Few clicks to clear loot too
                         click('labels/tap_to_close', region=regions['bottom_buttons'], seconds=4, suppress=True)
-                    logger.info('Battle complete!')
-                else: 
-                    break
+                    logger.info('Dream Realm Battle #' + str(_) + ' complete!')
+                    wait(3)
+                else:
+                    logger.info('not found')
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Dream Realm attempts exhausted.\n')

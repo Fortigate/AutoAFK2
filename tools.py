@@ -20,7 +20,7 @@ global device
 global connect_attempts
 connect_attempts = 1
 
-def connect_and_launch(port):
+def connect_and_launch(port, server):
     global device
     global connect_attempts
 
@@ -57,10 +57,10 @@ def connect_and_launch(port):
         logger.info('Device ' + str(device.serial) + " connected successfully")
 
     # Sometimes the game crashes when launching so we make sure its been running for 5 seconds before continuing
-    device.shell('monkey -p  com.farlightgames.igame.gp 1')
+    device.shell('monkey -p ' + server + ' 1')
     wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
-    while device.shell('pidof com.farlightgames.igame.gp') == '':
-        device.shell('monkey -p  com.farlightgames.igame.gp 1')
+    while device.shell('pidof ' + server) == '':
+        device.shell('monkey -p ' + server + ' 1')
         wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
 
 def get_adb_device(port):
