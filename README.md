@@ -6,7 +6,7 @@ Same as the last project except this time much much lighter.
 
 Run AutoAFK2.exe and after connecting you should be greeted with the following:
 
-![image](https://github.com/Fortigate/AutoAFK2/assets/46250387/e7ce8e81-8141-4053-8665-b5bf8b976fd5)
+![image](https://github.com/user-attachments/assets/456b4c37-3687-4f89-a726-55b1b1fd49bb)
 
 Alternatively the bot is available for [AutoAFK as a plugin](https://github.com/Hammanek/AutoAFK?tab=readme-ov-file#afk-journey-automation-integration).
 
@@ -23,16 +23,51 @@ Will run these tasks to complete your daily quests (as configured in ````setting
 * Purchase a 210 gem summon card from the Guild Store in the Emporium
 * Battle Arena (number of battles configurable)
 * Battle Dream Realm and collect rewards
+* Open Tower and push stages until defeat
 * Collect all:
   * Daily Quests
   * Guild Quests
   * Growth quests
   * Noble Path
-  * Events (some of them anyway)
-* Open daily tower and battle until defeat  
 * Click all heroes for 6 affinity a day
 
 Can also be run with the launch flag ````-d```` 
+
+````Push Towers````
+
+Will open the chosen tower, load formation and indefinitely retry the available stage, repeating after victory.
+
+Can also be run with the launch flag ````-l```` 
+
+````Push AFK Stage````
+
+Will open AFK Stage load formation and indefinitely retry the available stage, repeating after victory.
+
+Can also be run with the launch flag ````-afks```` 
+
+````Push AFK Talent Stage````
+
+Will open AFK Talent Stage, load formation and indefinitely retry the available stage, repeating after victory.
+
+Can also be run with the launch flag ````-afkt```` 
+
+````Push Dura's Trials````
+
+Will open Dura's Trials, load formation and use all paid tries to try and beat it, repeating for upper and lower trials.
+
+Can also be run with the launch flag ````-charms```` 
+
+````Push Quests````
+
+A bit experimental but it will clear dialogue, click items, autopath, fight battles etc to clear the active quest. It will not herd rats.
+
+Can also be run with the launch flag ````-quest```` 
+
+````Push Dream Realm````
+
+Runs the last configured formation in Dream Realm for all tries including paid.
+
+Can also be run with the launch flag ````-dr```` 
 
 ````Run Team-up farming````
 
@@ -40,23 +75,15 @@ Will open chat and join any active Corrupt Creature as a priority, if none are f
 
 Can also be run with the launch flag ````-t```` 
 
-````Retry Trial of Abyss````
-
-Will open Trial of Abyss and indefinitely retry the available stage, continuing after victory.
-
-Can also be run with the launch flag ````-a```` 
-
-````Retry Faction Tower````
-
-Will open the defined tower and indefintely retry the available stage, continuing after victory.
-
-Can also be run with the launch flag ````-l```` 
-
 ### Optional flags:
 
 ````-c config.ini````
 
 Will load an alternative settings.ini file when launching, useful for multiple accounts
+
+````-s global/vn````
+
+Support for the VN server if you are playing on that.
 
 
 More functionality and features coming as as when we have energy to add them.
