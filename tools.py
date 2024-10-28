@@ -190,11 +190,11 @@ def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, graysc
 
     search = Image.open(os.path.join(cwd, 'img', image + '.png'))
     result = locateAll(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
-    if result == None and retry != 1:
+    if result is None and retry != 1:
         while counter < retry:
             screenshot = getFrame()
             result = locate(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
-            if result != None:
+            if result is not None:
                 x, y, w, h = result
                 x_center = round(x + w / 2)
                 y_center = round(y + h / 2)
@@ -205,7 +205,7 @@ def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, graysc
                 logger.info('Retrying ' + image + ' search: ' + str(counter+1) + '/' + str(retry))
             counter = counter + 1
             wait(1)
-    elif result != None:
+    elif result is not None:
         list_results = list(result)
         if len(list_results) > 1:
             x, y, w, h = list_results[-1]
@@ -219,6 +219,25 @@ def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, graysc
         if suppress is not True:
             logger.info('Image:' + image + ' not found!')
         wait(seconds)
+
+def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
+    counter = 0
+    screenshot = getFrame()
+
+    for image in images:
+        search = Image.open(os.path.join(cwd, 'img', image + '.png'))
+        result = locate(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
+        if result is not None:
+            logger.info(image + ' clicked!')
+            x, y, w, h = result
+            x_center = round(x + w/2)
+            y_center = round(y + h/2)
+            device.input_tap(x_center, y_center)
+            wait(seconds)
+        else:
+            if suppress is not True:
+                logger.info('Image:' + image + ' not found!')
+            # wait(seconds)
 
 
 # Performs a swipe from X1/Y1 to X2/Y2 at the speed defined in duration (in milliseconds)
