@@ -16,7 +16,7 @@ afk_stage_defeats = 0
 global second_victory
 second_victory = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.9.2'
+version = '0.9.5'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 # Game version to launch
@@ -155,7 +155,7 @@ def dailies():
     # if config.getboolean('ACTIVITIES', 'claim_events'):
     #     claim_events()
     if config.getboolean('ACTIVITIES', 'push_towers'):
-        blind_push("towers")
+        blind_push("daily_towers")
     if config.getboolean('ACTIVITIES', 'push_dream_realm'):
         blind_push("dream_realm")
     if config.getboolean('ACTIVITIES', 'noble_path'):
@@ -707,9 +707,19 @@ def claim_events():
         logger.info('Events claimed!\n')
 
 def blind_push(mode, tower=None, load_formation=True):
-    if mode == "towers":
+
+    def auto_load_formation():
+        logger.info('Loading formation..')
+        wait()
+        click('buttons/records', seconds=2)
+        click('buttons/copy', seconds=2)
+        click('buttons/confirm', seconds=3, suppress=True)
+        click("buttons/battle", seconds=3)
+
+    # Opens first found tower and pushes until defeat, then exits
+    if mode == "daily_towers":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-        logger.info('Blind-pushing towers')
+        logger.info('Pushing tower until first defeat')
         clickXY(460, 1820, seconds=2)
         click("labels/legend_trial", seconds=3, retry=3)
         click_location('neutral') # To clear District popup
@@ -719,12 +729,8 @@ def blind_push(mode, tower=None, load_formation=True):
             if isVisible("towers/"+faction.lower(), confidence=0.94, click=True, seconds=4, yrelative=-20):
                 logger.info('Opening ' + faction + ' tower')
                 if isVisible("towers/lvl", click=True, region=(15, 850, 1050, 800), seconds=3, yrelative=-50, grayscale=True):
-                    wait(3)
                     if isVisible("buttons/battle"):
-                        click('buttons/records', seconds=2)
-                        click('buttons/copy', seconds=2)
-                        click('buttons/confirm', seconds=3, suppress=True)
-                        click("buttons/battle", seconds=3)
+                        auto_load_formation()
                         back_occurence = 0
                         while True:
                             if isVisible("labels/tap_to_close", click=True, seconds=2):
@@ -734,10 +740,7 @@ def blind_push(mode, tower=None, load_formation=True):
                                 logger.info(faction + ' win detected, moving to next floor')
                                 wait(5)
                                 back_occurence = 0
-                                click('buttons/records', seconds=2)
-                                click('buttons/copy', seconds=2)
-                                click('buttons/confirm', seconds=3, suppress=True)
-                                click("buttons/battle", seconds=3)
+                                auto_load_formation()
                             elif isVisible("buttons/back"):
                                 if back_occurence == 0:
                                     back_occurence = 1
@@ -752,30 +755,37 @@ def blind_push(mode, tower=None, load_formation=True):
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Towers pushed!\n')
 
-    if mode == "retry_tower":
+    # Loads a tower and keeps retrying until victory, repeating for the next stage infinitely
+    if mode == "push_tower":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-        logger.info('Pushing ' + tower.capitalize() + ' tower!')
-        clickXY(460, 1820, seconds=2)
+
+        first_run = True
+        logger.info('Pushing ' + tower.capitalize() + ' tower!\n')
+        clickXY(460, 1820, seconds=4)
         click("labels/legend_trial", seconds=2)
 
         factions = ["graveborn", "light", "mauler", "wilder"]
         for faction in factions:
             if faction == tower:
                 if isVisible("towers/"+faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
-                    while True:
-                        if not running.is_set():
-                            running.wait()  # wait until running is set
-                            logger.info('Resuming')
-                        click("buttons/abyss_lvl", suppress=True, grayscale=True, confidence=0.8)
-                        click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
-                        click("labels/tap_to_close", suppress=True, region=regions['bottom_buttons'])
-                        if isVisible("buttons/next", click=True, region=regions['bottom_buttons']):
-                            logger.info(faction.capitalize() + ' win detected, moving to next floor')
-                            click("buttons/battle", seconds=3, suppress=True)
+                    if isVisible("towers/lvl", click=True, region=(15, 850, 1050, 800), seconds=3, yrelative=-50, grayscale=True):
+                        auto_load_formation()
+                        while True:
+                            # click("buttons/abyss_lvl", seconds=5, suppress=True, grayscale=True, confidence=0.8)
+                            # if first_run is True:
+                            #     auto_load_formation()
+                            #     first_run = False
+                            click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
+                            click("buttons/retry", suppress=True, region=regions['bottom_buttons'])
+                            if isVisible("buttons/next", click=True, seconds=4, region=regions['bottom_buttons']):
+                                logger.info(faction.capitalize() + ' win detected, moving to next floor\n')
+                                auto_load_formation()
+                                click("buttons/battle", seconds=3, suppress=True)
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Towers pushed!\n')
 
+    # Retries Abyss stages, probably very outdated at this point
     if mode == 'abyss':
         victory_counter = 0
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -809,6 +819,7 @@ def blind_push(mode, tower=None, load_formation=True):
             logger.info('Something went wrong opening Trial of Abyss!')
             recover()
 
+    # Not completely sure what this does (apart from the obvious)
     if mode == "dream_realm":
         logger.info('Auto-retrying Dream Realm')
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -844,7 +855,7 @@ def blind_push(mode, tower=None, load_formation=True):
 
     if mode == 'afkstages':
         first_stage_won = False
-        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=3, retry=10):
+        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=0, retry=5):
 
             if load_formation is True:
                 logger.info('Loading formation')
@@ -853,15 +864,14 @@ def blind_push(mode, tower=None, load_formation=True):
                 click('buttons/confirm', seconds=3, suppress=True)
 
             # Stage check, different actions are taken depending on first or second stage in a multi
-            if isVisible('labels/multis_first_victory'):
+            if isVisible('labels/multis_first_victory', seconds=0):
                 first_stage_won = True
 
             # Start Battle
-            click('buttons/battle', region=regions['bottom_buttons'])
-            click('buttons/confirm', seconds=3, suppress=True)
+            click('buttons/battle', region=regions['bottom_buttons'], seconds=0)
+            click('buttons/confirm', seconds=0, suppress=True)
 
             if first_stage_won is False:
-                # logger.info('Stage 1/2')
                 # Wait until we see the 'Continue' after tha battle
                 while not isVisible('buttons/continue_stages', region=regions['bottom_buttons']):
                     wait()
@@ -878,9 +888,8 @@ def blind_push(mode, tower=None, load_formation=True):
                     blind_push('afkstages', load_formation=False)
 
             if first_stage_won is True:
-                # logger.info('Stage 2/2')
                 while not isVisible('buttons/continue_stages', region=regions['bottom_buttons']):
-                    if isVisible('buttons/back', region=regions['bottom_buttons']):
+                    if isVisible('buttons/back', region=regions['bottom_buttons'], seconds=0):
                         break
                     wait()
                 # Continue on second battle is always defeat
@@ -901,13 +910,13 @@ def blind_push(mode, tower=None, load_formation=True):
 def open_afk_stages(afkstages=True):
     clickXY(100, 1800, seconds=4)  # Open AFK Rewards
     if afkstages is True:
-        logger.info('Blind-pushing AFK Stages\n')
-        clickXY(715, 1600, seconds=4)  # Battle
-        clickXY(715, 1600, seconds=4)  # Battle (again since first can claim afk rewards when its >1h)
+        logger.info('Opening AFK Stages\n')
+        clickXY(715, 1600, seconds=2)  # Battle
+        clickXY(715, 1600, seconds=2)  # Battle (again since first can claim afk rewards when its >1h)
     else:
-        logger.info('Blind-pushing Talent Stages\n')
-        clickXY(370, 1600, seconds=4)  # Battle
-        clickXY(370, 1600, seconds=4)  # Battle (again since first can claim afk rewards when its >1h)
+        logger.info('Opening Talent Stages\n')
+        clickXY(370, 1600, seconds=2)  # Battle
+        clickXY(370, 1600, seconds=2)  # Battle (again since first can claim afk rewards when its >1h)
 
 def charms():
     def load_formation():
@@ -924,6 +933,9 @@ def charms():
             click('buttons/back', suppress=True)
             click('buttons/back2', suppress=True)
 
+    top_max_floor = False
+    bottom_max_floor = False
+
     # Open Trials screen
     logger.info('Running Dura\'s Trials!\n')
     clickXY(450, 1825, seconds=3)
@@ -933,38 +945,48 @@ def charms():
     logger.info('Checking top row Charm Trials..')
     if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1175, 950, 150), confidence=0.75, seconds=3):
         clickXY(750, 1800, seconds=6)
-        load_formation()
-        while 1 == 1:
-            click('buttons/battle', suppress=True, seconds=0)
-            if isVisible('labels/multiple_attempts', seconds=0):
-                logger.info('Out of tries! Checking bottom row..\n')
-                go_back()
-                break
-            click('buttons/confirm', suppress=True, seconds=0)
-            if isVisible('buttons/retry', click=True, seconds=3, region=(650, 1750, 200, 150)):
-                logger.info('Defeat..')
-            if isVisible('buttons/next2', click=True, seconds=5):
-                logger.info('Victory!')
-                load_formation()
+        if isVisible('buttons/sweep', seconds=0):
+            logger.info('Max floor reached! Checking bottom row..\n')
+            top_max_floor = True
+            go_back()
+        if top_max_floor is False:
+            load_formation()
+            while 1 == 1:
+                click('buttons/battle', retry=1, suppress=True, seconds=0)
+                if isVisible('labels/multiple_attempts', seconds=0):
+                    logger.info('Out of tries! Checking bottom row..\n')
+                    go_back()
+                    break
+                click('buttons/confirm', retry=1, suppress=True, seconds=0)
+                if isVisible('buttons/retry', retry=1, click=True, seconds=3, region=(650, 1750, 200, 150)):
+                    logger.info('Defeat..')
+                if isVisible('buttons/next2', retry=1, click=True, seconds=5):
+                    logger.info('Victory!')
+                    load_formation()
     else:
         logger.info("Top row not found..")
 
     logger.info('Checking bottom row Charm Trials..')
     if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1400, 950, 150), confidence=0.75, seconds=3):
         clickXY(750, 1800, seconds=6)
-        load_formation()
-        while 1 == 1:
-            click('buttons/battle', suppress=True, seconds=0)
-            if isVisible('labels/multiple_attempts', seconds=0):
-                logger.info('Out of tries! Exiting..\n')
-                go_back(exit_mode=True)
-                break
-            click('buttons/confirm', suppress=True, seconds=0)
-            if isVisible('buttons/retry', click=True, seconds=3, region=(650, 1750, 200, 150)):
-                logger.info('Defeat..')
-            if isVisible('buttons/next2', click=True, seconds=5):
-                logger.info('Victory!')
-                load_formation()
+        if isVisible('buttons/sweep', seconds=0):
+            logger.info('Max floor reached! Checking bottom row..\n')
+            bottom_max_floor = True
+            go_back()
+        if bottom_max_floor is False:
+            load_formation()
+            while 1 == 1:
+                click('buttons/battle', retry=1, suppress=True, seconds=0)
+                if isVisible('labels/multiple_attempts', seconds=0):
+                    logger.info('Out of tries! Exiting..\n')
+                    go_back(exit_mode=True)
+                    break
+                click('buttons/confirm', retry=1, suppress=True, seconds=0)
+                if isVisible('buttons/retry', retry=1, click=True, seconds=3, region=(650, 1750, 200, 150)):
+                    logger.info('Defeat..')
+                if isVisible('buttons/next2', retry=1, click=True, seconds=5):
+                    logger.info('Victory!')
+                    load_formation()
     else:
         logger.info("Bottom row not found..")
 
@@ -975,9 +997,9 @@ def charms():
 #TODO Get chest icon for collecting quest items / First run teleport prompt
 def quest_push():
     logger.info('Pushing Quests!\n')
-    buttons = ['labels/woi', 'buttons/battle', 'buttons/skip', 'buttons/dialogue_option', 'buttons/red_dialogue', 'buttons/confirm', 'buttons/interact',
+    buttons = ['buttons/battle', 'buttons/skip', 'buttons/dialogue_option', 'buttons/confirm', 'buttons/red_dialogue', 'buttons/interact',
                'buttons/dialogue', 'buttons/tap_and_hold', 'buttons/enter', 'buttons/chest', 'buttons/battle_button', 'labels/questrewards',
-               'buttons/woi_ship', 'labels/tap_to_close', 'labels/woi2']
+               'buttons/woi_ship', 'labels/tap_to_close', 'buttons/track']
     while True:
 
         click_array(buttons, suppress=True)
@@ -1038,7 +1060,7 @@ if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    farm_affinity()
+    blind_push('push_tower', 'wilder')
 
 if args['charms']:
     charms()
@@ -1084,47 +1106,49 @@ if selection == 2:
     if selection == 1:
         day = currenttimeutc.isoweekday()
         if day == 1:
-            blind_push('towers', 'light')
+            blind_push('push_tower', 'light')
         if day == 2:
-            blind_push('towers', 'mauler')
+            blind_push('push_tower', 'mauler')
         if day == 3:
-            blind_push('towers', 'wilder')
+            blind_push('push_tower', 'wilder')
         if day == 4:
-            blind_push('towers', 'graveborn')
+            blind_push('push_tower', 'graveborn')
         if day == 5:
-            blind_push('towers', 'light')
+            blind_push('push_tower', 'light')
         if day == 6:
-            blind_push('towers', 'wilder')
+            blind_push('push_tower', 'wilder')
         if day == 7:
-            blind_push('towers', 'light')
+            blind_push('push_tower', 'light')
 
     if selection == 2:
         day = currenttimeutc.isoweekday()
         if day == 5:
-            blind_push('towers', 'mauler')
+            blind_push('push_tower', 'mauler')
         if day == 6:
-            blind_push('towers', 'graveborn')
+            blind_push('push_tower', 'graveborn')
         if day == 7:
-            blind_push('towers', 'wilder')
+            blind_push('push_tower', 'wilder')
 
     if selection == 3:
         if day == 7:
-            blind_push('towers', 'wilder')
+            blind_push('push_tower', 'wilder')
 
     if selection == 4:
         day = currenttimeutc.isoweekday()
         if day == 7:
-            blind_push('towers', 'mauler')
+            blind_push('push_tower', 'mauler')
 
 if selection == 3:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    logger.info('Auto-pushing AFK Stages')
     open_afk_stages(afkstages=True)
-    blind_push('afkstages')
+    blind_push('afkstages', load_formation=True)
 
 if selection == 4:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    logger.info('Auto-pushing AFK Talent Stages')
     open_afk_stages(afkstages=False)
-    blind_push('afkstages')
+    blind_push('afkstages', load_formation=True)
 
 if selection == 5:
     charms()

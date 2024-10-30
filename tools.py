@@ -153,10 +153,11 @@ def wait(seconds=1):
 # Suppress will disable warnings, sometimes we don't need to know if a button isn't found
 def click(image, confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
     counter = 0
-    screenshot = getFrame()
 
+    screenshot = getFrame()
     search = Image.open(os.path.join(cwd, 'img', image + '.png'))
     result = locate(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
+
     if result == None and retry != 1:
         while counter < retry:
             screenshot = getFrame()
@@ -277,7 +278,7 @@ def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0,
         wait(seconds)
         return True
     else:
-        wait(seconds)
+        # wait(seconds) # Speed up the bot by not waiting when image not found
         return False
 
 # Returns the last frame from scrcpy, if the resolution isn't 1080 we scale it but this will only work in 16:9 resolutions
