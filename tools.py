@@ -18,7 +18,7 @@ config = configparser.ConfigParser()
 adb = Client(host="127.0.0.1", port=5037)
 global device
 global connect_attempts
-connect_attempts = 1
+connect_attempts = 0
 
 def connect_and_launch(port, server):
     global device
@@ -39,7 +39,7 @@ def connect_and_launch(port, server):
             connect_attempts += 1
             logger.info('Retrying ' + str(connect_attempts) + '/3')
             wait(5)
-            connect_and_launch(port) # Careful here as we run concurrent c_a_l() which can lead to multiple sessions running at once
+            connect_and_launch(port) # Careful here as we run concurrent connect_and_launch() which can lead to multiple sessions running at once
         if connect_attempts >= 3:
             logger.info('ADB connection error!')
             sys.exit(2)
