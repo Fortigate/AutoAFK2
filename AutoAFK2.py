@@ -5,6 +5,7 @@ from tools import * # Includes logging so we don't import here also
 from consolemenu import *
 from consolemenu.items import *
 from datetime import datetime, timezone
+import ctypes
 
 # Global variables for tracking time passed between team-up activities
 global last_synergy
@@ -19,7 +20,7 @@ formation = 0
 global first_stage_won
 first_stage_won = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.9.5'
+version = '0.9.9'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 # Game version to launch
@@ -130,6 +131,9 @@ regions = {
 # Boot up text
 logger.info('Loaded settings file: ' + str(settings.split('\\')[-1]))
 logger.info('Version: ' + version)
+
+# Nice name for the window and debugging peoples screenshots
+ctypes.windll.kernel32.SetConsoleTitleW("AutoAFK2 v" + version)
 
 # Boot up activities before tasks are ran
 connect_and_launch(port=config.get('ADVANCED', 'port'), server=globals()['server'])
@@ -862,7 +866,7 @@ def blind_push(mode, tower=None, load_formation=True):
 
     # For pushing afk stages
     if mode == 'afkstages':
-        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=0, retry=5):
+        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=0, retry=10):
 
             # Change formation if we we beat the 2nd round or have defeat >10 times in a row
             if load_formation is True or globals()['afk_stage_defeats'] >= 10:
@@ -879,7 +883,7 @@ def blind_push(mode, tower=None, load_formation=True):
                     click('buttons/confirm', seconds=2, suppress=True)
                     if globals()['first_stage_won'] is True:
                         clickXY(550, 1100)
-                else:
+                elif load_formation is True:
                     logger.info('Loading formation')
                     click('buttons/records', seconds=2)
                     click('buttons/copy', seconds=1)
@@ -899,15 +903,18 @@ def blind_push(mode, tower=None, load_formation=True):
                     wait()
 
                 # Then check for Victory or Defeat
-                result_value = return_pixel_colour(1050, 1000, 2) # Returns blue value of a pixel in the floating victory/defeat pop up
-                if result_value > 100: # Blue above 100 is defeat screen
+                wait() # Small wait before we read to prevent false positives
+                result_value = return_pixel_colour(625, 1025, 2) # Returns blue value of a pixel in the floating victory/defeat pop up
+                if result_value > 140: # Blue above 140 is defeat screen
                     globals()['afk_stage_defeats'] += 1
                     logger.info('Defeat #' + str(globals()['afk_stage_defeats']) + '! Retrying')
-                    clickXY(550, 1800, seconds=3)
+                    clickXY(750, 1800, seconds=3)
                     blind_push('afkstages', load_formation=False)
-                elif result_value < 100: # Blue under 100 is orange-y, so the victory screen
+                elif result_value < 90: # Blue under 90 is orange-y, so the victory screen
                     globals()['afk_stage_defeats'] = 0
                     logger.info('First round won!')
+                    # timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+                    # save_screenshot('first_round_pass_' + timestamp)
                     clickXY(750, 1800, seconds=3)
                     blind_push('afkstages', load_formation=False)
 
