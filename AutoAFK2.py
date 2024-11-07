@@ -3,7 +3,6 @@ import inspect
 from humanfriendly import format_timespan
 from tools import * # Includes logging so we don't import here also
 from consolemenu import *
-from consolemenu.items import *
 from datetime import datetime, timezone
 import ctypes
 
@@ -20,7 +19,7 @@ formation = 0
 global first_stage_won
 first_stage_won = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.9.9'
+version = '0.9.10'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 # Game version to launch
@@ -158,7 +157,7 @@ def dailies():
     if config.getboolean('ACTIVITIES', 'dream_realm'):
         dream_realm()
     if config.getboolean('ACTIVITIES', 'collect_quests'):
-        quests()
+        collect_quests()
     # if config.getboolean('ACTIVITIES', 'claim_events'):
     #     claim_events()
     if config.getboolean('ACTIVITIES', 'push_towers'):
@@ -501,7 +500,7 @@ def single_recruit():
         return
 
 
-def quests():
+def collect_quests():
     logger.info('Collecting Quests')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
@@ -510,6 +509,7 @@ def quests():
     clickXY(300, 1800, seconds=2)# Daily quests
 
     if isVisible('labels/daily_quests'):
+        logger.info('    Collecting Daily Quests')
         isVisible('buttons/quick_claim', region=regions['bottom_third'], click=True)
         wait(3)
         if config.getboolean('ADVANCED', 'collect_daily_rewards') is True:
@@ -519,13 +519,20 @@ def quests():
             logger.info('Skipping daily quest rewards collection')
 
         # Guild quests
+        logger.info('    Collecting Guild Quests')
         clickXY(500, 1800, seconds=2)
         while isVisible('buttons/quests_claim'):
             click('buttons/quests_claim')
 
         # Season Quests
+        logger.info('    Collecting Season Growth Trials')
         clickXY(950, 1825, seconds=2)
+        # Season Growth Trials
+        while isVisible('labels/reward', click=True, region=(232, 451, 700, 100)):
+            while isVisible('buttons/quests_claim'):
+                click('buttons/quests_claim')
         # Season Growth Quests
+        logger.info('    Collecting Season Growth Quests')
         clickXY(300, 1670, seconds=2)
         while isVisible('buttons/quests_claim'):
             click('buttons/quests_claim')
@@ -636,14 +643,16 @@ def noble_path():
     click('buttons/start', region=regions['bottom_buttons'], suppress=True, seconds=3) # To clear new noble pop-up
 
     # Fabled Road
-    if isVisible('buttons/fabled_path_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/fabled_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+    if isVisible('buttons/fabled_road_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/fabled_road_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
         # This will claim quests in all tabs
-        click('buttons/fabled_quests_inactive', region=[640, 410, 100, 100], seconds=2, suppress=True)
+        clickXY(750, 450)
+        # click('buttons/fabled_quests_inactive', region=[640, 410, 100, 100], seconds=2, suppress=True)
         if isVisible('buttons/claim_all', click=True):
             clickXY(1000, 1800)
         # Travelogue
-        click('buttons/fabled_quests_inactive', region=[265, 410, 100, 100], seconds=2, suppress=True)
-        if isVisible('buttons/claim_all', click=True):
+        clickXY(350, 450)
+        # click('buttons/fabled_quests_inactive', region=[265, 410, 100, 100], seconds=2, suppress=True)
+        if isVisible('buttons/claim_all_italics', click=True):
             clickXY(1000, 1800)
 
     # Seasonal Noble Path
@@ -1095,7 +1104,7 @@ if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    blind_push('push_tower', 'wilder')
+    friend_points_collect()
 
 if args['charms']:
     charms()
@@ -1112,8 +1121,8 @@ if args['afkt']:
 
 # If no function launch argument we pop the UI
 
-primary_menu = ["Run Dailies", "Push Towers", "Push AFK Stages", "Push AFK Talent Stages", "Push Dura's Trials", "Run Quests", "Use Dream Realm attempts", "Farm Team-Up Chat"]
-selection = SelectionMenu.get_selection(primary_menu, title='Welcome to AutoAFK2! Select an activity:')
+options = ["Run Dailies", "Push Towers", "Push AFK Stages", "Push AFK Talent Stages", "Push Dura's Trials", "Run Quests", "Use Dream Realm attempts", "Farm Team-Up Chat"]
+selection = SelectionMenu.get_selection(options, title='Welcome to AutoAFK2! Select an activity:', subtitle='Note that to stop a task or start a new one you have to restart the bot. Questions? Jc.2 @ Discord')
 selection += 1 # Non-zero index to make things easier to read
 
 if selection == 1:

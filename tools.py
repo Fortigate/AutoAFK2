@@ -34,15 +34,20 @@ def connect_and_launch(port, server):
         device.shell('test')
     except Exception as e:
         logger.info('Connection error:')
+        nonetype = "'NoneType' object has no attribute 'shell'"
         logger.info(e)
-        while connect_attempts < 3:
-            connect_attempts += 1
-            logger.info('Retrying ' + str(connect_attempts) + '/3')
-            wait(5)
-            connect_and_launch(port) # Careful here as we run concurrent connect_and_launch() which can lead to multiple sessions running at once
-        if connect_attempts >= 3:
-            logger.info('ADB connection error!')
-            sys.exit(2)
+        if str(e) == nonetype:
+            logger.info('This is usually caused by there being no ADB device present, check port or manually run \'adb devices\' to check')
+        wait(15)
+        sys.exit(2)
+        # while connect_attempts < 3:
+        #     connect_attempts += 1
+        #     logger.info('Retrying ' + str(connect_attempts) + '/3')
+        #     wait(5)
+        #     connect_and_launch(port) # Careful here as we run concurrent connect_and_launch() which can lead to multiple sessions running at once
+        # if connect_attempts >= 3:
+        #     logger.info('ADB connection error!')
+        #     # sys.exit(2)
 
     # Get scrcpy running, catch errors again
     try:
