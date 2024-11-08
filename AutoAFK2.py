@@ -19,7 +19,7 @@ formation = 0
 global first_stage_won
 first_stage_won = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.9.10'
+version = '0.9.11'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 # Game version to launch
@@ -642,41 +642,30 @@ def noble_path():
     click('buttons/noble_path', region=regions['menu_activities'], seconds=5)
     click('buttons/start', region=regions['bottom_buttons'], suppress=True, seconds=3) # To clear new noble pop-up
 
-    # Fabled Road
-    if isVisible('buttons/fabled_road_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/fabled_road_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
-        # This will claim quests in all tabs
-        clickXY(750, 450)
-        # click('buttons/fabled_quests_inactive', region=[640, 410, 100, 100], seconds=2, suppress=True)
-        if isVisible('buttons/claim_all', click=True):
-            clickXY(1000, 1800)
+    def claim_and_collect(italics=True):
+        # This will claim quests/collet rewards
+        clickXY(750, 450) # Click Quests
+        if isVisible('buttons/claim_all_italics', click=True, region=regions['bottom_third']):
+            clickXY(1000, 1800) # Clear Loot
         # Travelogue
-        clickXY(350, 450)
-        # click('buttons/fabled_quests_inactive', region=[265, 410, 100, 100], seconds=2, suppress=True)
-        if isVisible('buttons/claim_all_italics', click=True):
-            clickXY(1000, 1800)
+        clickXY(350, 450) # Click Trek
+        if isVisible('buttons/claim_all_italics', click=True, region=regions['bottom_third']):
+            clickXY(1000, 1800) # Clear Loot
+
+    # Fabled Road
+    logger.info('    Checking Fabled Road')
+    if isVisible('buttons/fabled_road_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/fabled_road_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+        claim_and_collect()
 
     # Seasonal Noble Path
+    logger.info('    Checking Season Noble Path')
     if isVisible('buttons/noble_season_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_season_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
-        # This will claim quests in all tabs
-        click('buttons/noble_quests_inactive', grayscale=True, seconds=2)
-        if isVisible('buttons/claim_all', click=True):
-            clickXY(1000, 1800)
-        # Travelogue
-        click('buttons/noble_travelogue_inactive', grayscale=True)
-        if isVisible('buttons/claim_all', click=True):
-            clickXY(1000, 1800)
+        claim_and_collect()
 
     # Noble Path
+    logger.info('    Checking Noble Path')
     if isVisible('buttons/noble_path_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
-        # This will claim quests in all tabs
-        click('buttons/noble_quests_inactive', grayscale=True, seconds=2)
-        if isVisible('buttons/claim_all', click=True):
-            clickXY(1000, 1800)
-
-        # Travelogue
-        click('buttons/noble_travelogue_inactive', grayscale=True)
-        if isVisible('buttons/claim_all', click=True):
-            clickXY(1000, 1800)
+        claim_and_collect()
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Noble path collected!\n')
@@ -1104,7 +1093,7 @@ if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    friend_points_collect()
+    noble_path()
 
 if args['charms']:
     charms()
