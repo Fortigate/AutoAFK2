@@ -4,6 +4,9 @@
 
 Same as the last project except this time much much lighter.
 
+> [!IMPORTANT]
+> _Note that the bot only supports Emulators and devices with ADB, <ins>not the official desktop client</ins>_.
+
 Run AutoAFK2.exe and after connecting you should be greeted with the following:
 
 ![image](https://github.com/user-attachments/assets/456b4c37-3687-4f89-a726-55b1b1fd49bb)
@@ -89,6 +92,16 @@ Support for the VN server if you are playing on that.
 More functionality and features coming as as when we have energy to add them.
 
 ## How to use
+
+The bot will attempt to autoamtically conect to the first found ADB device but it is not always sucessful. You may need to manually enter the port in `settings.ini`
+
+* Bluestacks: Go to Settings - Advanced - Enable ADB, the port is the numbers after the `:`
+
+* LDPlayer: Settings - Other Settings - ADB Debugging - Open Local connection, the port should be `5555` by default
+
+* MumuPlayer: tbc not used this one
+
+* Connected device: Enable ADB on the device and connect to your computer using a USB cable, if your phone doesn't display a diferent port try the default `5555`
 
 Get the latest [release](https://github.com/Fortigate/AutoAFK2/releases), specify your ADB port in settings.ini and run AutoAFK2.exe with (or without) the appropriate launch parameter
 
