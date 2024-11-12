@@ -17,39 +17,36 @@ cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
 config = configparser.ConfigParser()
 adb = Client(host="127.0.0.1", port=5037)
 global device
-global connect_attempts
-connect_attempts = 0
 
 def connect_and_launch(port, server):
     global device
-    global connect_attempts
 
+    # Establish ADB connection with device
     if not get_connected_device():
+        # If there is not a device connected already ope ADB and connect using the port in settings.ini
         device = adb.device(get_adb_device(port))
     else:
+        # Else connect to the first found device in ADB
         device = get_connected_device()
 
     # After getting device run a test echo command to make sure the device is active and catch any errors
     try:
+        # If this command is succesul we're connected! (to something at least..)
         device.shell('test')
     except Exception as e:
+        # Else print the error and description and close after 15 seconds
         logger.info('Connection error:')
         nonetype = "'NoneType' object has no attribute 'shell'"
+        offline = "ERROR: 'FAIL' 000edevice offline"
         logger.info(e)
         if str(e) == nonetype:
             logger.info('This is usually caused by there being no ADB device present, check port or manually run \'adb devices\' to check')
+        if str(e) == offline:
+            logger.info('Device found but offline in ADB, try restarting the emulator and connecting again')
         wait(15)
         sys.exit(2)
-        # while connect_attempts < 3:
-        #     connect_attempts += 1
-        #     logger.info('Retrying ' + str(connect_attempts) + '/3')
-        #     wait(5)
-        #     connect_and_launch(port) # Careful here as we run concurrent connect_and_launch() which can lead to multiple sessions running at once
-        # if connect_attempts >= 3:
-        #     logger.info('ADB connection error!')
-        #     # sys.exit(2)
 
-    # Get scrcpy running, catch errors again
+    # Once we're connected initialise scrcpy
     try:
         scrcpyClient = scrcpy.Client(device=device.serial)
         scrcpyClient.max_fps = 5
@@ -69,7 +66,12 @@ def connect_and_launch(port, server):
         wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
 
 def get_adb_device(port):
-    adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
+    # Get the right ADB path depending on whether we run from Pycharm or compiled .exe
+    if os.path.isfile((cwd + '\output\\autoafk2\\adbutils\\binaries\\adb.exe')):
+        adbpath = os.path.join(cwd, 'output', 'autoafk2', 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
+    else:
+        adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
+
     if len(adb.devices()) > 0:
         for active_devices in adb.devices():
             if active_devices.serial[0] == 'e': # If it starts with 'e' (basically 'emulator-####')
@@ -82,23 +84,20 @@ def get_adb_device(port):
 # Confirms that the game has loaded by checking for the sunandstars icon next to the minimap. We press a few buttons to navigate back if needed
 def waitUntilGameActive():
     logger.info('Searching for main map screen..')
-    loadingcounter = 0
     timeoutcounter = 0
-    loaded = 1
 
-    while loadingcounter <= loaded:
+    while True:
         if isVisible('labels/sunandstars', seconds=0,  region=(770, 40, 100, 100)):
+            logger.info('Game Loaded!\n')
             break
-        clickXY(420, 50, seconds=0)  # Neutral location for closing reward pop ups etc, should never be an in game button here
-        click('buttons/back', seconds=0, suppress=True, region=(50, 1750, 150, 150))
-        click('buttons/back2', seconds=0,  suppress=True, region=(50, 1750, 150, 150))
-        click('buttons/claim', seconds=0,  suppress=True) # Claim Esperia monthly so it doesnt block the view
+        clickXY(420, 50, seconds=1)  # Neutral location for closing reward pop ups etc, should never be an in game button here
+        buttons = ['buttons/back', 'buttons/back2', 'buttons/claim']
+        click_array(buttons, suppress=True, delay=1)
         timeoutcounter += 1
         if timeoutcounter > 30:  # This is nearly 4 minutes currently
             logger.info('Timed out while loading!')
             save_screenshot('loading_timeout')
             sys.exit()
-    logger.info('Game Loaded!\n')
 
 def resolutionCheck():
     resolution_lines = device.shell('wm size').split('\n')
@@ -226,15 +225,16 @@ def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, graysc
             logger.info('Image:' + image + ' not found!')
         wait(seconds)
 
-def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
-    counter = 0
+# 'delay' will pause between images else we try and click multiple at once
+def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=False, region=(0, 0, 1080, 1920), delay=0):
     screenshot = getFrame()
 
     for image in images:
         search = Image.open(os.path.join(cwd, 'img', image + '.png'))
         result = locate(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
         if result is not None:
-            logger.info(image + ' clicked!')
+            if suppress is not True:
+                logger.info(image + ' clicked!')
             x, y, w, h = result
             x_center = round(x + w/2)
             y_center = round(y + h/2)
@@ -243,7 +243,8 @@ def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=Fal
         else:
             if suppress is not True:
                 logger.info('Image:' + image + ' not found!')
-            # wait(seconds)
+        wait(delay)
+
 
 
 # Performs a swipe from X1/Y1 to X2/Y2 at the speed defined in duration (in milliseconds)
@@ -277,7 +278,7 @@ def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0,
     elif res != None:
         if click is True:
             x, y, w, h = res
-            x_center = round((x + xrelative) + w / 2) 
+            x_center = round((x + xrelative) + w / 2)
             y_center = round((y + yrelative) + h / 2)
             device.input_tap(x_center, y_center)
         wait(seconds)
@@ -285,6 +286,25 @@ def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0,
     else:
         # wait(seconds) # Speed up the bot by not waiting when image not found
         return False
+
+# Takes a array of images as input, and returns the first found image from the array. If none are found returns 'not_found'
+# Useful for scanning for multiple images in one screenshot rathen than making multiple isVisible calls.
+def isVisible_array(images, confidence=0.9, seconds=1, retry=3, click=False, region=(0, 0, 1080, 1920), xrelative=0, yrelative=0, grayscale=False):
+    screenshot = getFrame()
+
+    for image in images:
+        search = Image.open(os.path.join(cwd, 'img', image + '.png'))
+        res = locate(search, screenshot, grayscale=False, confidence=confidence, region=region)
+        if res is not None:
+            if click is True:
+                x, y, w, h = res
+                x_center = round(x + w / 2) + xrelative
+                y_center = round(y + h / 2) + yrelative
+                device.input_tap(x_center, y_center)
+            wait(seconds)
+            return image
+    # If nothing found return false
+    return 'not_found'
 
 # Returns the last frame from scrcpy, if the resolution isn't 1080 we scale it but this will only work in 16:9 resolutions
 def getFrame():
@@ -349,7 +369,11 @@ def safe_open_and_close(name, state):
 
 # Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
 def get_connected_device():
-    adbpath = os.path.join(cwd, 'adb.exe')  # Locate adb.exe in working directory
+    if os.path.isfile((cwd + '\output\\autoafk2\\adbutils\\binaries\\adb.exe')):
+        adbpath = os.path.join(cwd, 'output', 'autoafk2', 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
+    else:
+        adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
+
     try: 
         devices = adb.devices()
         if devices:
