@@ -126,7 +126,9 @@ regions = {
     'bottom_buttons': (0, 1620, 1080, 300),
     'confirm_deny': (500, 1100, 500, 300),
     'battle_modes': (20, 580, 1050, 1100),
-    'action_buttons': (400, 1050, 300, 500) # gives out of bounds error and I'm too tired to work out why
+    'action_buttons': (400, 1050, 300, 500), # gives out of bounds error and I'm too tired to work out why
+    'levelup': (150, 900, 950, 50),
+    'levelup_hero': (1000, 1700, 80, 60)
 }
 
 # Boot up text
@@ -170,7 +172,7 @@ def dailies():
         noble_path()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
         farm_affinity()
-        # maintenance_level()
+        maintenance_level()
     logger.info('Dailies done!')
 
 # Bit of an ugly function, we open the Team-Up chat and scan for the orange Join button and the Synergy Battle label for synergy battles
@@ -608,6 +610,34 @@ def maintenance_level(heroes=5, level_up_times=11):
     else:
         logger.error('Failed to close Heroes Hall')
         recover()
+
+def level_up():
+    logger.info('Levelling available heroes')
+    safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
+    can_level = False
+
+    # Open Heroes Hall
+    clickXY(650, 1850, seconds=3)
+
+    # Click to open hero
+    while isVisible('buttons/levelup_double', region=regions['levelup']) or isVisible('buttons/levelup_single', region=regions['levelup']):
+        logger.info('Hero found!')
+        click('buttons/levelup_double', region=regions['levelup'], suppress=True, retry=1)
+        click('buttons/levelup_single', region=regions['levelup'], suppress=True, retry=1)
+        # Keep clicking to level
+        while isVisible('buttons/levelup_double', region=regions['levelup_hero'], seconds=0):
+            clickXY(800, 1800)
+            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0):
+                click('buttons/level_up', region=regions['bottom_third'], seconds=4)
+                click('buttons/back', region=regions['bottom_third'])
+        while isVisible('buttons/levelup_single', region=regions['levelup_hero'], seconds=0):
+            clickXY(800, 1800)
+            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0):
+                click('buttons/level_up', region=regions['bottom_third'], seconds=4)
+                click('buttons/back', region=regions['bottom_third'])
+
+    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
+        logger.info('Heroes levelled!\n')
 
 def farm_affinity(heroes=60): # 60 heros in game as of Tasi
     logger.info('Clicking ' + str(heroes) + ' heroes for daily affinity bonus')
@@ -1115,7 +1145,7 @@ if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    noble_path()
+    level_up()
 
 if args['charms']:
     charms()
