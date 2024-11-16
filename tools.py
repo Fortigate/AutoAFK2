@@ -349,6 +349,10 @@ def recover(count=3):
         if isVisible('labels/sunandstars', region=(770, 40, 100, 100)):
             return True
 
+def debug_screen(name):
+    timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
+    save_screenshot(name + '_' + timestamp)
+
 # We call this at the start and end of every activity to make sure we are back at the main map screen, if not we are lost and exit
 def safe_open_and_close(name, state):
     if state == 'open':

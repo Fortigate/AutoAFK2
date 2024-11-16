@@ -21,7 +21,7 @@ formation = 0
 global first_stage_won
 first_stage_won = False
 # Version output so I can work out which version I'm actually running for debugging
-version = '0.9.11e'
+version = '0.9.12'
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
 # Game version to launch
@@ -867,7 +867,8 @@ def blind_push(mode, tower=None, load_formation=True):
     # For pushing afk stages
     if mode == 'afkstages':
         timeout = 0
-        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=0, retry=10):
+        timeout_warned = False
+        if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=0, retry=20):
 
             # Change formation if we we beat the 2nd round or have defeat >10 times in a row
             if load_formation is True or globals()['afk_stage_defeats'] >= config.getint('PUSHING', 'defeat_limit'):
@@ -891,7 +892,7 @@ def blind_push(mode, tower=None, load_formation=True):
                     click('buttons/confirm', seconds=0, suppress=True)
 
             # Stage check, different actions are taken depending on first or second stage in a multi
-            if isVisible('labels/multis_first_victory', seconds=0):
+            if isVisible('labels/multis_first_victory', seconds=0) or not isVisible('buttons/formation_swap', seconds=0):
                 globals()['first_stage_won'] = True
 
             # Start Battle
@@ -901,33 +902,34 @@ def blind_push(mode, tower=None, load_formation=True):
 
             if globals()['first_stage_won'] is False:
                 # Wait until we see the 'Continue' after tha battle
-                while not isVisible('buttons/continue_stages', region=regions['bottom_buttons'], grayscale=True, confidence=0.85):
+                result_value = isVisible_array(['labels/defeat', 'labels/victory'], confidence=0.9)
+                while result_value == 'not_found':
                     timeout += 1
-                    if timeout > 30: # If nothing at 30 seconds start clicking in case battery saver mode is active
-                        logger.info('Possibly stuck, checking if it\'s the energysaver screen..')
+                    if timeout > 90: # If nothing at 30 seconds start clicking in case battery saver mode is active
+                        if timeout_warned is False:
+                            logger.info('Possibly stuck, checking if it\'s the energysaver screen..')
+                            debug_screen('battle_stuck')
+                            timeout_warned = True
                         click_location('neutral')
-                    if timeout > 60: # Still nothing at 60 seconds? Quit as somethings gone wrong
+                    if timeout > 180: # Still nothing at 60 seconds? Quit as somethings gone wrong
                         logger.info('Battle timeout error!')
-                        break
+                        debug_screen('battle_timeout')
+                        sys.exit(2)
+                    result_value = isVisible_array(['labels/defeat', 'labels/victory'], confidence=0.9)
                     wait()
+                timeout = 0 # Result timer after result found
 
                 # Then check for Victory or Defeat
-                timeout = 0 # Reset timer on victory and or defeat
-                result_value = isVisible_array(['labels/defeat', 'labels/victory'], confidence=0.9)
-                # logger.info(result_value) # debug line
-                if result_value == 'labels/defeat': # Blue above 120 is defeat screen
+                if result_value == 'labels/defeat':
                     globals()['afk_stage_defeats'] += 1
                     logger.info('Defeat #' + str(globals()['afk_stage_defeats']) + '! Retrying')
                     clickXY(550, 1800, seconds=3)
                     blind_push('afkstages', load_formation=False)
-                elif result_value == 'labels/victory': # Blue under 90 is orange-y, so the victory screen
+                elif result_value == 'labels/victory':
                     globals()['afk_stage_defeats'] = 0
                     logger.info('First round won!')
                     clickXY(730, 1800, seconds=3)
                     blind_push('afkstages', load_formation=False)
-                else:
-                    logger.info('Unknown stage result.')
-                    sys.exit(0)
 
             if globals()['first_stage_won'] is True:
                 # Wait for battle to end with either Continue button or Back button
@@ -961,14 +963,14 @@ def blind_push(mode, tower=None, load_formation=True):
 
 def open_afk_stages(afkstages=True):
     clickXY(100, 1800, seconds=4)  # Open AFK Rewards
-    if afkstages is True:
+    if afkstages is True: # Standard Stage
         logger.info('Opening AFK Stages')
         logger.info('Changing formations after ' + str(config.getint('PUSHING', 'defeat_limit')) + ' defeats\n')
-        clickXY(715, 1600, seconds=2)  # Battle
+        clickXY(715, 1600, seconds=3)  # Battle
         clickXY(715, 1600, seconds=2)  # Battle (again since first can claim afk rewards when its >1h)
-    else:
+    else: # Talent Stage
         logger.info('Opening Talent Stages\n')
-        clickXY(370, 1600, seconds=2)  # Battle
+        clickXY(370, 1600, seconds=3)  # Battle
         clickXY(370, 1600, seconds=2)  # Battle (again since first can claim afk rewards when its >1h)
 
 def charms():
