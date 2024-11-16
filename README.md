@@ -99,7 +99,7 @@ The bot will attempt to autoamtically conect to the first found ADB device but i
 
 * LDPlayer: Settings - Other Settings - ADB Debugging - Open Local connection, the port should be `5555` by default
 
-* MumuPlayer: tbc not used this one
+* MumuPlayer: Seems ADB is enabled by default on port 7555
 
 * Connected device: Enable ADB on the device and connect to your computer using a USB cable, if your phone doesn't display a diferent port try the default `5555`
 
