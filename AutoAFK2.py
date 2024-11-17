@@ -8,18 +8,21 @@ from consolemenu import *
 from datetime import datetime, timezone
 import ctypes
 
-# Global variables for tracking time passed between team-up activities
+# Global variables
 global last_synergy
 last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before opening the first
 global last_corrupt
 last_corrupt = time.time()
+
 # For stage pushing
-global afk_stage_defeats
-afk_stage_defeats = 0
+global stage_defeats
+stage_defeats = 0
 global formation
-formation = 0
+formation = 1
 global first_stage_won
 first_stage_won = False
+
+
 # Version output so I can work out which version I'm actually running for debugging
 version = '0.9.12'
 # Current time in UTC for tracking which towers/events are open
@@ -57,6 +60,7 @@ config.read(settings)
 # Change server if necessary
 if args['server'] == 'vn':
     globals()['server'] = 'com.farlightgames.igame.gp.vn'
+
 
 # Make a nice name for the output log file
 if settings == 'settings.ini':
@@ -170,9 +174,10 @@ def dailies():
         blind_push("dream_realm")
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
+    if config.getboolean('ACTIVITIES', 'level_up'):
+        level_up()
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
         farm_affinity()
-        maintenance_level()
     logger.info('Dailies done!')
 
 # Bit of an ugly function, we open the Team-Up chat and scan for the orange Join button and the Synergy Battle label for synergy battles
@@ -492,7 +497,7 @@ def single_recruit():
     # Perform recruit, lots of long waits here as the animations are slow before we stabilise again
     if isVisible('labels/all_hero_recruitment', region=regions['bottom_buttons']):
         clickXY(250, 1550)
-        click('buttons/continue2') # long wait for animation
+        click('buttons/continue2', suppress=True) # long wait for animation
         wait(15)
         click('buttons/back')
         click('buttons/back2', seconds=3)
@@ -551,70 +556,9 @@ def collect_quests():
         recover()
         return
 
-def level_up_hero(times=10):
-    for _ in range(times):
-        wait(1)
-        if _ < 9:
-            clickXY(800, 1800, seconds=1)  # Click level up button
-        else:
-            clickXY(800, 1800, seconds=4)  # Click level up button
-
-def equip_gear():
-    clickXY(286, 1610, seconds=3)  # Open equipment selection
-    clickXY(800, 1800, seconds=3)  # Equip the gear
-    clickXY(90, 1785, seconds=3)   # Return to hero screen
-
-def select_next_hero():
-    clickXY(993, 1070, seconds=3)  # Select next hero
-
-def maintenance_level(heroes=5, level_up_times=11):
-    """
-    Level up and equip gear for a specified number of Resonance Heroes in sequential order.
-
-    Args:
-        heroes (int): Number of heroes to level up and equip. Default is 5.
-        level_up_times (int): Number of times to level up each hero. Default is 10.
-    """
-    logger.info(f'Leveling up and equipping {heroes} Resonance Heroes')
-
-    try:
-        safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-
-        # Open Heroes Hall
-        clickXY(650, 1850, seconds=3)
-
-        # Select first hero
-        clickXY(115, 839, seconds=3.5)
-        wait(1.5)
-
-        for hero in range(heroes):
-            logger.debug(f'Processing hero {hero + 1}/{heroes}')
-
-            # Level up hero
-            level_up_hero(level_up_times)
-
-            # Equip new gear
-            equip_gear()
-
-            # Move to next hero if not the last one
-            if hero < heroes - 1:
-                select_next_hero()
-
-    except Exception as e:
-        logger.error(f'An error occurred: {e}')
-        recover()
-        return
-
-    if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
-        logger.info('Hero leveling and equipment complete')
-    else:
-        logger.error('Failed to close Heroes Hall')
-        recover()
-
 def level_up():
     logger.info('Levelling available heroes')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
-    can_level = False
 
     # Open Heroes Hall
     clickXY(650, 1850, seconds=3)
@@ -626,13 +570,13 @@ def level_up():
         click('buttons/levelup_single', region=regions['levelup'], suppress=True, retry=1)
         # Keep clicking to level
         while isVisible('buttons/levelup_double', region=regions['levelup_hero'], seconds=0):
-            clickXY(800, 1800)
-            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0):
+            swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
+            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0): # Region in the centre for the 10th level 'Level Up' button
                 click('buttons/level_up', region=regions['bottom_third'], seconds=4)
                 click('buttons/back', region=regions['bottom_third'])
         while isVisible('buttons/levelup_single', region=regions['levelup_hero'], seconds=0):
-            clickXY(800, 1800)
-            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0):
+            swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
+            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0): # Region in the centre for the 10th level 'Level Up' button
                 click('buttons/level_up', region=regions['bottom_third'], seconds=4)
                 click('buttons/back', region=regions['bottom_third'])
 
@@ -747,15 +691,26 @@ def claim_events():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
-def blind_push(mode, tower=None, load_formation=True):
+def formation_handler(formation_number=1, already_open=False):
+    logger.info('Loading formation #' + str(math.trunc(globals()['formation'])))
+    counter = 1
+    if already_open is False: # Sometimes we're already in the formations menu
+        click('buttons/records', seconds=3)
+    while counter != formation_number:
+        clickXY(1000, 1025)
+        counter += 1
+    click('buttons/copy', seconds=2)
+    # Handle 'Hero not owned' popup
+    if isVisible('labels/not_owned'):
+        while isVisible('labels/not_owned'): # Try next formation and check again
+            logger.info('Hero not owned, trying next formation..')
+            clickXY(360, 1250)
+            clickXY(1000, 1025)
+            # globals()['formation'] += globals()['formation'] + 1 # Increment formation
+            click('buttons/copy')
+    click('buttons/confirm', suppress=True)
 
-    def auto_load_formation():
-        logger.info('Loading formation..')
-        wait()
-        click('buttons/records', seconds=2)
-        click('buttons/copy', seconds=2)
-        click('buttons/confirm', seconds=3, suppress=True)
-        click("buttons/battle", seconds=3)
+def blind_push(mode, tower=None, load_formation=True):
 
     # Opens first found tower and pushes until defeat, then exits
     if mode == "daily_towers":
@@ -771,7 +726,7 @@ def blind_push(mode, tower=None, load_formation=True):
                 logger.info('Opening ' + faction + ' tower\n')
                 if isVisible("towers/lvl", click=True, region=(15, 850, 1050, 800), seconds=3, yrelative=-50, grayscale=True):
                     if isVisible("buttons/battle"):
-                        auto_load_formation()
+                        formation_handler()
                         back_occurence = 0 # Somehow this handles defeats and I'm not sure why
                         while True:
                             if isVisible("labels/tap_to_close", click=True, seconds=2):
@@ -781,7 +736,7 @@ def blind_push(mode, tower=None, load_formation=True):
                                 logger.info(faction + ' win detected, moving to next floor')
                                 wait(5)
                                 back_occurence = 0
-                                auto_load_formation()
+                                formation_handler()
                             elif isVisible("buttons/back"):
                                 if back_occurence == 0:
                                     back_occurence = 1
@@ -810,7 +765,7 @@ def blind_push(mode, tower=None, load_formation=True):
             if faction == tower:
                 if isVisible("towers/"+faction.lower(), confidence=0.95, click=True, seconds=4, yrelative=-20):
                     if isVisible("towers/lvl", click=True, region=(15, 850, 1050, 800), seconds=3, yrelative=-50, grayscale=True):
-                        auto_load_formation()
+                        formation_handler()
                         while True:
                             # click("buttons/abyss_lvl", seconds=5, suppress=True, grayscale=True, confidence=0.8)
                             # if first_run is True:
@@ -820,7 +775,7 @@ def blind_push(mode, tower=None, load_formation=True):
                             click("buttons/retry", suppress=True, region=regions['bottom_buttons'])
                             if isVisible("buttons/next", click=True, seconds=4, region=regions['bottom_buttons']):
                                 logger.info(faction.capitalize() + ' win detected, moving to next floor\n')
-                                auto_load_formation()
+                                formation_handler()
                                 click("buttons/battle", seconds=3, suppress=True)
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
@@ -901,33 +856,27 @@ def blind_push(mode, tower=None, load_formation=True):
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=0, retry=20):
 
             # Change formation if we we beat the 2nd round or have defeat >10 times in a row
-            if load_formation is True or globals()['afk_stage_defeats'] >= config.getint('PUSHING', 'defeat_limit'):
+            if load_formation is True or globals()['stage_defeats'] >= config.getint('PUSHING', 'defeat_limit'):
                 # More than 10 defeats in a row and a multiple of 10 (i.e load new formation on 10th/20th/30th etc defeat)
-                if globals()['afk_stage_defeats'] >= 1 and globals()['afk_stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
-                    click('buttons/records', seconds=2)
-                    counter = 0
-                    clicks = (globals()['afk_stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1 # number of defeats / defeat_limit, plus 1 as we start on formation #1
-                    logger.info(str(globals()['afk_stage_defeats']) + ' defeats, trying formation ' + str(math.trunc(clicks)))
-                    while counter != clicks:
-                        clickXY(1000, 1025)
-                        counter += 1
-                    click('buttons/copy', seconds=2)
-                    click('buttons/confirm', seconds=2, suppress=True)
-                    if globals()['first_stage_won'] is True:
+                if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
+                    globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1 # number of defeats / defeat_limit, plus 1 as we start on formation #1
+                    logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
+                    formation_handler(globals()['formation'])
+                    if globals()['first_stage_won'] is True: # Manually select second round if we've won the first
                         clickXY(550, 1100)
                 elif load_formation is True:
-                    logger.info('Loading formation')
-                    click('buttons/records', seconds=2)
-                    click('buttons/copy', seconds=1)
-                    click('buttons/confirm', seconds=0, suppress=True)
+                    formation_handler(globals()['formation'])
 
             # Stage check, different actions are taken depending on first or second stage in a multi
-            if isVisible('labels/multis_first_victory', seconds=0) or not isVisible('buttons/formation_swap', seconds=0):
+            # if isVisible('labels/multis_first_victory', seconds=0) or not isVisible('buttons/formation_swap', seconds=0):
+            #     globals()['first_stage_won'] = True
+            stage_state = isVisible_array(['labels/multis_first_victory', 'buttons/formation_swap'])
+            # If multis_first_victory we know we've won the first round, if not formation_swap it's not a multi so we jump to the second fight check
+            if stage_state == 'labels/multis_first_victory' or stage_state != 'labels/formation_swap':
                 globals()['first_stage_won'] = True
 
             # Start Battle
             click('buttons/battle', retry=5, region=regions['bottom_buttons'], seconds=0)
-            # TODO un-owned hero popup has 'confirm' text button
             click('buttons/confirm', seconds=0, suppress=True)
 
             if globals()['first_stage_won'] is False:
@@ -951,12 +900,12 @@ def blind_push(mode, tower=None, load_formation=True):
 
                 # Then check for Victory or Defeat
                 if result_value == 'labels/defeat':
-                    globals()['afk_stage_defeats'] += 1
-                    logger.info('Defeat #' + str(globals()['afk_stage_defeats']) + '! Retrying')
+                    globals()['stage_defeats'] += 1
+                    logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
                     clickXY(550, 1800, seconds=3)
                     blind_push('afkstages', load_formation=False)
                 elif result_value == 'labels/victory':
-                    globals()['afk_stage_defeats'] = 0
+                    globals()['stage_defeats'] = 0
                     logger.info('First round won!')
                     clickXY(730, 1800, seconds=3)
                     blind_push('afkstages', load_formation=False)
@@ -975,14 +924,14 @@ def blind_push(mode, tower=None, load_formation=True):
                     wait()
                 # Continue on second battle is always defeat
                 if isVisible('buttons/continue_stages', region=regions['bottom_buttons']):
-                    globals()['afk_stage_defeats'] += 1
-                    logger.info('Defeat #' + str(globals()['afk_stage_defeats']) + '! Retrying')
+                    globals()['stage_defeats'] += 1
+                    logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
                     clickXY(730, 1800, seconds=3)
                     blind_push('afkstages', load_formation=False)
                 # If we see a Back button we're at the Stage Passed screen (or seriously lost)
                 if isVisible('buttons/back', region=regions['bottom_buttons']):
-                    globals()['afk_stage_defeats'] = 0
-                    logger.info('Second round won! Stage passed!\n')
+                    globals()['stage_defeats'] = 0
+                    logger.info('Victory! Stage passed\n')
                     clickXY(750, 1800, seconds=4)
                     globals()['first_stage_won'] = False
                     blind_push('afkstages', load_formation=True)
@@ -1003,13 +952,9 @@ def open_afk_stages(afkstages=True):
         clickXY(370, 1600, seconds=3)  # Battle
         clickXY(370, 1600, seconds=2)  # Battle (again since first can claim afk rewards when its >1h)
 
-def charms():
-    def load_formation():
-        logger.info('Loading formation')
-        click('buttons/records', seconds=2)
-        click('buttons/copy', seconds=2, suppress=True)
-        click('buttons/confirm', seconds=3, suppress=True)
+def handle_charms():
 
+    # Handles navigating the charms screen
     def go_back(exit_mode=False):
         click('buttons/confirm', suppress=True)
         click('buttons/back', suppress=True)
@@ -1023,11 +968,16 @@ def charms():
 
     # Open Trials screen
     logger.info('Running Dura\'s Trials!\n')
-    clickXY(450, 1825, seconds=3)
+    clickXY(450, 1825, seconds=3) # this isn't a safe way to open it and I should fix it at some point
     clickXY(200, 1000, seconds=3)
+
+    # Clear popups
+    clickXY(550, 1800, seconds=2)
+    clickXY(550, 1800, seconds=2)
 
     # Check top row
     logger.info('Checking top row Charm Trials..')
+    globals()['stage_defeats'] = 0
     if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1175, 950, 150), confidence=0.75, seconds=3):
         clickXY(750, 1800, seconds=6)
         if isVisible('buttons/sweep', seconds=0):
@@ -1035,7 +985,7 @@ def charms():
             top_max_floor = True
             go_back()
         if top_max_floor is False:
-            load_formation()
+            formation_handler(globals()['formation'])
             while 1 == 1:
                 click('buttons/battle', retry=1, suppress=True, seconds=0)
                 if isVisible('labels/multiple_attempts', seconds=0):
@@ -1043,15 +993,25 @@ def charms():
                     go_back()
                     break
                 click('buttons/confirm', retry=1, suppress=True, seconds=0)
-                if isVisible('buttons/retry', retry=1, click=True, seconds=3, region=(650, 1750, 200, 150)):
-                    logger.info('Defeat..')
+                if isVisible('buttons/retry', retry=1, click=True, seconds=4, region=(650, 1750, 200, 150)):
+                    # Increment defeats
+                    globals()['stage_defeats'] += 1
+                    # If were past the defeat cap handle formation change, else standard log output
+                    if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
+                        globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
+                        logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
+                        formation_handler(globals()['formation'])
+                    else:
+                        logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
                 if isVisible('buttons/next2', retry=1, click=True, seconds=5):
-                    logger.info('Victory!')
-                    load_formation()
+                    logger.info('Victory!\n')
+                    globals()['stage_defeats'] = 0
+                    formation_handler()
     else:
         logger.info("Top row not found..")
 
     logger.info('Checking bottom row Charm Trials..')
+    globals()['stage_defeats'] = 0
     if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1400, 950, 150), confidence=0.75, seconds=3):
         clickXY(750, 1800, seconds=6)
         if isVisible('buttons/sweep', seconds=0):
@@ -1059,7 +1019,7 @@ def charms():
             bottom_max_floor = True
             go_back()
         if bottom_max_floor is False:
-            load_formation()
+            formation_handler()
             while 1 == 1:
                 click('buttons/battle', retry=1, suppress=True, seconds=0)
                 if isVisible('labels/multiple_attempts', seconds=0):
@@ -1067,11 +1027,20 @@ def charms():
                     go_back(exit_mode=True)
                     break
                 click('buttons/confirm', retry=1, suppress=True, seconds=0)
-                if isVisible('buttons/retry', retry=1, click=True, seconds=3, region=(650, 1750, 200, 150)):
-                    logger.info('Defeat..')
+                if isVisible('buttons/retry', retry=1, click=True, seconds=4, region=(650, 1750, 200, 150)):
+                    # Increment defeats
+                    globals()['stage_defeats'] += 1
+                    # If were past the defeat cap handle formation change, else standard log output
+                    if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
+                        globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
+                        logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
+                        formation_handler(globals()['formation'])
+                    else:
+                        logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
                 if isVisible('buttons/next2', retry=1, click=True, seconds=5):
                     logger.info('Victory!')
-                    load_formation()
+                    globals()['stage_defeats\n'] = 0
+                    formation_handler()
     else:
         logger.info("Bottom row not found..")
 
@@ -1148,7 +1117,7 @@ if args['test']:
     level_up()
 
 if args['charms']:
-    charms()
+    handle_charms()
 
 if args['afks']:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -1236,7 +1205,7 @@ if selection == 4:
     blind_push('afkstages', load_formation=True)
 
 if selection == 5:
-    charms()
+    handle_charms()
 
 if selection == 6:
     quest_push()

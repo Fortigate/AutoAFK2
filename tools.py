@@ -58,6 +58,12 @@ def connect_and_launch(port, server):
     finally:
         logger.info('Device ' + str(device.serial) + " connected successfully")
 
+    # Automatic server selection if VN version is installed
+    global_version = device.shell('pm list packages com.farlightgames.igame.gp')
+    if str(global_version[-3:-1]) == 'vn':
+        logger.info('VN Client installed, setting server to VN')
+        server = 'com.farlightgames.igame.gp.vn'
+
     # Sometimes the game crashes when launching so we make sure its been running for 5 seconds before continuing
     device.shell('monkey -p ' + server + ' 1')
     wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
@@ -83,19 +89,19 @@ def get_adb_device(port):
 
 # Confirms that the game has loaded by checking for the sunandstars icon next to the minimap. We press a few buttons to navigate back if needed
 def waitUntilGameActive():
-    logger.info('Searching for main map screen..')
+    logger.info('Waiting for game to load..')
     timeoutcounter = 0
 
     while True:
-        if isVisible('labels/sunandstars', seconds=0,  region=(770, 40, 100, 100)):
+        if isVisible('labels/guild', seconds=0,  region=(730, 1880, 80, 25), confidence=0.8):
             logger.info('Game Loaded!\n')
             break
         clickXY(420, 50, seconds=1)  # Neutral location for closing reward pop ups etc, should never be an in game button here
         buttons = ['buttons/back', 'buttons/back2', 'buttons/claim']
         click_array(buttons, suppress=True, delay=1)
         timeoutcounter += 1
-        if timeoutcounter > 30:  # This is nearly 4 minutes currently
-            logger.info('Timed out while loading!')
+        if timeoutcounter > 15:  # This is nearly 4 minutes currently
+            logger.info('Timed out while loading! Guild button was not found so if everything looks good please check in game language is set to English.')
             save_screenshot('loading_timeout')
             sys.exit()
 
