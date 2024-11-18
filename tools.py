@@ -111,15 +111,23 @@ def resolutionCheck():
     override_resolution = resolution_lines[1].split(' ')
 
     if override_resolution[0] != '':
-        if not str(override_resolution[2]).strip() == '1920x1080' and not str(
-                override_resolution[2]).strip() == '1080x1920':
+        if not str(override_resolution[2]).strip() == '1920x1080' and not str(override_resolution[2]).strip() == '1080x1920':
             logger.info('Unsupported Override Resolution! (' + str(override_resolution[2]).strip() + '). Please change your resolution to 1920x1080')
             logger.info('We will try and scale the image but non-16:9 formats will likely have issues with image detection')
     else:
-        if not str(physical_resolution[2]).strip() == '1920x1080' and not str(
-                physical_resolution[2]).strip() == '1080x1920':
+        if not str(physical_resolution[2]).strip() == '1920x1080' and not str(physical_resolution[2]).strip() == '1080x1920':
             logger.info('Unsupported Physical Resolution! (' + str(physical_resolution[2]).strip() + '). Please change your resolution to 1920x1080')
             logger.info('We will try and scale the image but non-16:9 formats will likely have issues with image detection')
+
+    # This will throw an execption if we are in Landscape mode as it'll exceed the screen dimensions using the region
+    try:
+        isVisible('labels/guild', seconds=0, retry=1, region=(730, 1880, 80, 25))
+    except Exception as e:
+        logger.info(e)
+        logger.info('Guild button out of range, this is usually because we are in Landscape mode, only Portrait is supported! Please switch and restart the bot')
+        wait(15)
+        sys.exit(2)
+
 
 # Clicks on the given XY coordinates
 def clickXY(x, y, seconds=1):
