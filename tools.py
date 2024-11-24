@@ -21,13 +21,13 @@ global device
 def connect_and_launch(port, server):
     global device
 
-    # Establish ADB connection with device
-    if not get_connected_device():
-        # If there is not a device connected already ope ADB and connect using the port in settings.ini
-        device = adb.device(get_adb_device(port))
-    else:
-        # Else connect to the first found device in ADB
-        device = get_connected_device()
+    # # Establish ADB connection with device
+    # if not get_connected_device():
+    #     # If there is not a device connected already ope ADB and connect using the port in settings.ini
+    device = adb.device(get_adb_device(port))
+    # else:
+    #     # Else connect to the first found device in ADB
+    #     device = get_connected_device()
 
     # After getting device run a test echo command to make sure the device is active and catch any errors
     try:
@@ -78,14 +78,14 @@ def get_adb_device(port):
     else:
         adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
 
-    if len(adb.devices()) > 0:
-        for active_devices in adb.devices():
-            if active_devices.serial[0] == 'e': # If it starts with 'e' (basically 'emulator-####')
-                return active_devices.serial
-    elif len(adb.devices()) < 1: # Else manually connect using port
-        device_name = '127.0.0.1:' + port
-        Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
-        return device_name
+    # if len(adb.devices()) > 0:
+    #     for active_devices in adb.devices():
+    #         if active_devices.serial[0] == 'e': # If it starts with 'e' (basically 'emulator-####')
+    #             return active_devices.serial
+    # elif len(adb.devices()) < 1: # Else manually connect using port
+    device_name = '127.0.0.1:' + port
+    Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
+    return device_name
 
 # Confirms that the game has loaded by checking for the sunandstars icon next to the minimap. We press a few buttons to navigate back if needed
 def waitUntilGameActive():
@@ -388,7 +388,7 @@ def safe_open_and_close(name, state):
 # Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
 def get_connected_device():
     if os.path.isfile((cwd + '\output\\autoafk2\\adbutils\\binaries\\adb.exe')):
-        adbpath = os.path.join(cwd, 'output', 'autoafk2', 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
+        adbpath = os.path.join(cwd, 'output', 'autoafk2', 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in internal directory
     else:
         adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
 
