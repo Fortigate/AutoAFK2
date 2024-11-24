@@ -862,7 +862,8 @@ def blind_push(mode, tower=None, load_formation=True):
                     # When we haven't seen the x3 button three times in a row we can assume the battle is over
                     while dr_counter < 3:
                         if isVisible('buttons/skip_inverse', seconds=0, region=regions['x3_and_skip']):
-                            click('buttons/skip_inverse', seconds=3, region=regions['x3_and_skip'])
+                            click('buttons/skip_inverse', seconds=2, region=regions['x3_and_skip'])
+                            click('buttons/confirm', seconds=3, region=regions['confirm_deny'], suppress=True)
                             logger.info('Skip available, skipping the fight')
                             dr_counter = 0
                         else:
