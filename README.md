@@ -91,6 +91,7 @@ Support for the VN server if you are playing on that.
 
 More functionality and features coming whenever we have energy to add them.
 
+
 ## How to use
 
 > ⚠️ **Important:** This application is tested and developed for devices/emulators configured to **1920x1080 Portrait mode**.
@@ -103,6 +104,36 @@ The bot will attempt to automatically connect to the first found ADB device, but
 * **Connected device**: Enable ADB on the device and connect to your computer using a USB cable. If your phone doesn't display a different port, try the default `5555`.
 
 Get the latest [release](https://github.com/Fortigate/AutoAFK2/releases), specify your ADB port in `settings.ini`, and run `AutoAFK2.exe` with (or without) the appropriate launch parameter.
+
+## Windows Native Development Setup
+
+> ⚠️ **Important:** Ensure the port in `settings.ini` is correctly configured before proceeding.
+
+1. **Set up Python Environment**  
+Use `pyenv` to install the Python version specified in `.python-version`.
+```bash
+choco install pyenv-win
+pyenv install $(cat .python-version)
+pyenv local $(cat .python-version)      
+ ```
+
+2. **Create a venv and activate it**
+```bash
+pyenv exec python -m venv venv
+.\venv\Scripts\activate.ps1
+ ```
+
+3. **Install Dependencies**  
+Inside the activated virtual environment, install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. **Run the Application**  
+The script `AutoAFK2.py` should now be runnable:
+```bash
+python AutoAFK2.py
+```
 
 ## Issues?
 

@@ -1,0 +1,49 @@
+name: Build on Release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v4
+
+    - name: Install Chocolatey
+      run: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force; \
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+        iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+    - name: Install pyenv-win
+      run: choco install pyenv-win -y
+
+    - name: Setup pyenv and Python environment
+      run: |
+        pyenv install $(Get-Content .python-version)
+        pyenv local $(Get-Content .python-version)
+        pyenv exec python -m venv venv
+
+    - name: Install dependencies
+      run: |
+        .\venv\Scripts\activate.ps1
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Create the executable
+      run: |
+        .\venv\Scripts\activate.ps1
+        pyinstaller --onedir --add-data "adbutils;adbutils" --add-data "img;img" --add-data "venv/Lib/site-packages/scrcpy/scrcpy-server.jar;scrcpy" AutoAFK2.py
+        cp .\settings.ini .\dist\AutoAFK2\
+
+    - name: Zip the dist directory
+      run: Compress-Archive -Path .\dist\AutoAFK2\* -DestinationPath AutoAFK2.zip
+
+    - name: Upload the ZIP to the release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: AutoAFK2.zip
