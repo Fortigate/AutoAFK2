@@ -38,7 +38,7 @@ jobs:
     - name: Create the executable
       run: |
         .\venv\Scripts\activate.ps1
-        pyinstaller --onedir --add-data "adbutils;adbutils" --add-data "img;img" --add-data "venv/Lib/site-packages/scrcpy/scrcpy-server.jar;scrcpy" AutoAFK2.py
+        pyinstaller --clean --onedir --icon="img/auto.ico" --add-data "adbutils;adbutils" --add-data "img;img" --add-data "venv/Lib/site-packages/scrcpy/scrcpy-server.jar;scrcpy" AutoAFK2.py
         cp .\settings.ini .\dist\AutoAFK2\
 
     - name: Zip the dist directory
