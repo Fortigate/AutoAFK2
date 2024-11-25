@@ -18,6 +18,7 @@ jobs:
 
     - name: Setup pyenv and Python environment
       run: |
+        $env:PATH = "$env:USERPROFILE\.pyenv\pyenv-win\bin;$env:USERPROFILE\.pyenv\pyenv-win\shims;$env:PATH"
         pyenv install $(Get-Content .python-version)
         pyenv local $(Get-Content .python-version)
         pyenv exec python -m venv venv
