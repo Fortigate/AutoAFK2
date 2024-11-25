@@ -54,7 +54,7 @@ def connect_and_launch(port, server):
         scrcpyClient.start(daemon_threaded=True)
         setattr(device, 'srccpy', scrcpyClient)
     except Exception as e:
-        logger.info('Error starting scrcpy!')
+        logger.info('Error starting scrcpy!: ' + str(e))
     finally:
         logger.info('Device ' + str(device.serial) + " connected successfully")
 
