@@ -1,8 +1,8 @@
-/adb.exe
-/AdbWinApi.dll
 /output/
 /.idea/
 venv
 *.pyc
 settings.log
 /scrcpy/
+/dist/
+/build/

@@ -2,7 +2,7 @@
 
 ## An automation tool for AFK Journey
 
-Same as the last project except this time much much lighter.
+Same as the last project except this time much lighter.
 
 > [!IMPORTANT]
 > _Note that the bot only supports Emulators and devices with ADB, <ins>not the official desktop client</ins>_.
@@ -62,7 +62,7 @@ Can also be run with the launch flag ````-charms````
 
 ````Push Quests````
 
-A bit experimental but it will clear dialogue, click items, autopath, fight battles etc to clear the active quest. It will not herd rats.
+A bit experimental, but it will clear dialogue, click items, autopath, fight battles, etc. to clear the active quest. It will not herd rats.
 
 Can also be run with the launch flag ````-quest```` 
 
@@ -74,7 +74,7 @@ Can also be run with the launch flag ````-dr````
 
 ````Run Team-up farming````
 
-Will open chat and join any active Corrupt Creature as a priority, if none are found it will send your second strongest hero to any Synergy battle Requests. Great for farming hearts for affinity items overnight, and helps your server out! You can configure a time limit to run for also.
+Will open chat and join any active Corrupt Creature as a priority, if none are found it will send your second-strongest hero to any Synergy battle Requests. Great for farming hearts for affinity items overnight, and helps your server out! You can configure a time limit to run for also.
 
 Can also be run with the launch flag ````-t```` 
 
@@ -89,21 +89,50 @@ Will load an alternative settings.ini file when launching, useful for multiple a
 Support for the VN server if you are playing on that.
 
 
-More functionality and features coming as as when we have energy to add them.
+More functionality and features coming whenever we have energy to add them.
 
 ## How to use
 
-The bot will attempt to autoamtically conect to the first found ADB device but it is not always sucessful. You may need to manually enter the port in `settings.ini`
+> ⚠️ **Important:** This application is tested and developed for devices/emulators configured to **1920x1080 Portrait mode**.
 
-* Bluestacks: Go to Settings - Advanced - Enable ADB, the port is the numbers after the `:`
+The bot will attempt to automatically connect to the first found ADB device, but it is not always successful. You may need to manually enter the port in `settings.ini`.
 
-* LDPlayer: Settings - Other Settings - ADB Debugging - Open Local connection, the port should be `5555` by default
+* **Bluestacks**: Go to Settings → Advanced → Enable ADB, the port is the numbers after the `:`.
+* **LDPlayer**: Settings → Other Settings → ADB Debugging → Open Local connection, the port should be `5555` by default.
+* **MumuPlayer**: Seems ADB is enabled by default on port `7555`.
+* **Connected device**: Enable ADB on the device and connect to your computer using a USB cable. If your phone doesn't display a different port, try the default `5555`.
 
-* MumuPlayer: Seems ADB is enabled by default on port 7555
+Get the latest [release](https://github.com/Fortigate/AutoAFK2/releases), specify your ADB port in `settings.ini`, and run `AutoAFK2.exe` with (or without) the appropriate launch parameter.
 
-* Connected device: Enable ADB on the device and connect to your computer using a USB cable, if your phone doesn't display a diferent port try the default `5555`
+## Windows Native Development Setup
 
-Get the latest [release](https://github.com/Fortigate/AutoAFK2/releases), specify your ADB port in settings.ini and run AutoAFK2.exe with (or without) the appropriate launch parameter
+> ⚠️ **Important:** Ensure the port in `settings.ini` is correctly configured before proceeding.
+
+1. **Set up Python Environment**  
+Use `pyenv` to install the Python version specified in `.python-version`.
+```bash
+choco install pyenv-win
+pyenv install $(cat .python-version)
+pyenv local $(cat .python-version)      
+ ```
+
+2. **Create a venv and activate it**
+```bash
+pyenv exec python -m venv venv
+.\venv\Scripts\activate.ps1
+ ```
+
+3. **Install Dependencies**  
+Inside the activated virtual environment, install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. **Run the Application**  
+The script `AutoAFK2.py` should now be runnable:
+```bash
+python AutoAFK2.py
+```
 
 ## Issues?
 
