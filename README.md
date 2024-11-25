@@ -95,15 +95,35 @@ More functionality and features coming as as when we have energy to add them.
 
 The bot will attempt to autoamtically conect to the first found ADB device but it is not always sucessful. You may need to manually enter the port in `settings.ini`
 
-* Bluestacks: Go to Settings - Advanced - Enable ADB, the port is the numbers after the `:`
+## Windows Native Development Setup
 
-* LDPlayer: Settings - Other Settings - ADB Debugging - Open Local connection, the port should be `5555` by default
+> ⚠️ **Important:** Ensure the port in `settings.ini` is correctly configured before proceeding.
 
-* MumuPlayer: Seems ADB is enabled by default on port 7555
+1. **Set up Python Environment**  
+Use `pyenv` to install the Python version specified in `.python-version`.
+```bash
+choco install pyenv-win
+pyenv install $(cat .python-version)
+pyenv local $(cat .python-version)      
+ ```
 
-* Connected device: Enable ADB on the device and connect to your computer using a USB cable, if your phone doesn't display a diferent port try the default `5555`
+2. **Create a venv and activate it**
+```bash
+pyenv exec python -m venv venv
+.\venv\Scripts\activate.ps1
+ ```
 
-Get the latest [release](https://github.com/Fortigate/AutoAFK2/releases), specify your ADB port in settings.ini and run AutoAFK2.exe with (or without) the appropriate launch parameter
+3. **Install Dependencies**  
+Inside the activated virtual environment, install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. **Run the Application**  
+The script `AutoAFK2.py` should now be runnable:
+```bash
+python AutoAFK2.py
+```
 
 ## Issues?
 
