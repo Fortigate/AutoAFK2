@@ -24,7 +24,7 @@ global first_stage_won
 first_stage_won = False
 
 # Version output
-version = '0.9.13'
+version = '0.9.13b'
 
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
@@ -70,6 +70,7 @@ if args['server'] == 'vn':
 
 # Disable formation loading if set
 if args['formation_skip']:
+    logger.info('Formation skip active')
     globals()['load_formations'] = False
 
 # Make a nice name for the output log file
@@ -577,6 +578,12 @@ def level_up():
     # Open Heroes Hall
     clickXY(650, 1850, seconds=3)
 
+    # Clicks the central button when leveling uses Dust rather than XP, then presses back to return to the selected hero screen
+    def dust_level():
+        if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0):  # Region in the centre for the 10th level 'Level Up' button
+            click('buttons/level_up', region=regions['bottom_third'], seconds=4)
+            # click('buttons/back', region=regions['bottom_third'])
+
     # Click to open hero
     while isVisible('buttons/levelup_double', region=regions['levelup']) or isVisible('buttons/levelup_single', region=regions['levelup']):
         logger.info('Hero found!')
@@ -584,15 +591,16 @@ def level_up():
         click('buttons/levelup_single', region=regions['levelup'], suppress=True, retry=1)
         # Keep clicking to level
         while isVisible('buttons/levelup_double', region=regions['levelup_hero'], seconds=0):
+            dust_level()
             swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
-            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0): # Region in the centre for the 10th level 'Level Up' button
-                click('buttons/level_up', region=regions['bottom_third'], seconds=4)
-                click('buttons/back', region=regions['bottom_third'])
+            dust_level()
         while isVisible('buttons/levelup_single', region=regions['levelup_hero'], seconds=0):
+            dust_level()
             swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
-            if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0): # Region in the centre for the 10th level 'Level Up' button
-                click('buttons/level_up', region=regions['bottom_third'], seconds=4)
-                click('buttons/back', region=regions['bottom_third'])
+            dust_level()
+        click('buttons/back', region=regions['bottom_third'], seconds=3, suppress=True, retry=1) # Back to Hero Box
+
+    logger.info('Done!')
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Heroes levelled!\n')
@@ -916,13 +924,13 @@ def blind_push(mode, tower=None, load_formation=True):
                 # Loop until we see either the Victory or Defeat screen
                 while result_value == 'not_found':
                     timeout += 1
-                    if timeout > 90: # If nothing at 30 seconds start clicking in case battery saver mode is active
+                    if timeout > 100: # If nothing at 30 seconds start clicking in case battery saver mode is active
                         if timeout_warned is False:
                             logger.info('Possibly stuck, checking if it\'s the energysaver screen..')
                             debug_screen('battle_stuck')
                             timeout_warned = True
                         click_location('neutral')
-                    if timeout > 180: # Still nothing at 60 seconds? Quit as somethings gone wrong and record the screen for debugging
+                    if timeout > 200: # Still nothing at 60 seconds? Quit as somethings gone wrong and record the screen for debugging
                         logger.info('Battle timeout error!')
                         debug_screen('battle_timeout')
                         sys.exit(2)
@@ -1015,9 +1023,9 @@ def handle_charms():
         # Check top row
         logger.info('Checking top row Charm Trials..')
         globals()['stage_defeats'] = 0
-        if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1175, 950, 150), confidence=0.75, seconds=3):
+        if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1175, 950, 150), confidence=0.75, seconds=4):
             clickXY(750, 1800, seconds=6)
-            if isVisible('buttons/sweep', seconds=0):
+            if isVisible('buttons/sweep_buttons', seconds=0):
                 logger.info('Max floor reached! Checking bottom row..\n')
                 top_max_floor = True
                 go_back()
@@ -1052,7 +1060,7 @@ def handle_charms():
         globals()['stage_defeats'] = 0
         if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1400, 950, 150), confidence=0.75, seconds=3):
             clickXY(750, 1800, seconds=6)
-            if isVisible('buttons/sweep', seconds=0):
+            if isVisible('buttons/sweep_buttons', seconds=0):
                 logger.info('Max floor reached! Checking bottom row..\n')
                 bottom_max_floor = True
                 go_back()
@@ -1101,7 +1109,7 @@ def quest_push():
                'buttons/woi_ship', 'labels/tap_to_close', 'buttons/track', 'labels/woi', 'labels/woi2']
     while True:
 
-        click_array(buttons, suppress=True)
+        click_array(buttons, suppress=True, confidence=0.95)
         if isVisible('buttons/tap_and_hold', region=regions['chat_window'], seconds=0):
             logger.info('Holding button')
             swipe(550, 1250, 550, 1250, 4000)  # Hacky way to hold it down

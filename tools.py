@@ -247,7 +247,7 @@ def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=Fal
         search = Image.open(os.path.join(cwd, 'img', image + '.png'))
         result = locate(search, screenshot, grayscale=grayscale, confidence=confidence, region=region)
         if result is not None:
-            if suppress is not True:
+            if suppress is not False:
                 logger.info(image + ' clicked!')
             x, y, w, h = result
             x_center = round(x + w/2)
