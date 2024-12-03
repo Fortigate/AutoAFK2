@@ -23,8 +23,8 @@ formation = 1
 global first_stage_won
 first_stage_won = False
 
-# Version output
-version = '0.9.13b'
+# placeholder gets replaced during build process with release tag.
+version = '<DEVELOPMENT_VERSION>'
 
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
@@ -57,11 +57,13 @@ parser.add_argument("-c", "--config", metavar="CONFIG", default="settings.ini", 
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
 
-# Work out which config file we're reading/writing to/from
-if args['config']:
-    settings = os.path.join(cwd, args['config'])
-else:
-    settings = os.path.join(cwd, 'settings.ini')
+def get_current_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return cwd
+
+settings = os.path.join(get_current_dir(), args['config'])
 config.read(settings)
 
 # Change server if necessary
