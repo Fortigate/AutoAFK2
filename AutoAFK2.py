@@ -170,26 +170,26 @@ def dailies():
         friend_points_collect()
     if config.getboolean('ACTIVITIES', 'mail_collect'):
         mail_connect()
-    if config.getint('ACTIVITIES', 'arena_battles') > 0:
-        arena(config.getint('ACTIVITIES', 'arena_battles'))
     if config.getboolean('ACTIVITIES', 'emporium_purchases'):
         emporium_purchases()
     if config.getboolean('ACTIVITIES', 'single_recruit'):
         single_recruit()
+    if config.getint('ACTIVITIES', 'arena_battles') > 0:
+        arena(config.getint('ACTIVITIES', 'arena_battles'))
     if config.getboolean('ACTIVITIES', 'dream_realm'):
         dream_realm()
+    if config.getboolean('ACTIVITIES', 'push_towers'):
+        blind_push("daily_towers")
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         collect_quests()
     # if config.getboolean('ACTIVITIES', 'claim_events'):
     #     claim_events()
-    if config.getboolean('ACTIVITIES', 'push_towers'):
-        blind_push("daily_towers")
-    if config.getboolean('ACTIVITIES', 'push_dream_realm'):
-        blind_push("dream_realm")
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
     if config.getboolean('ACTIVITIES', 'level_up'):
         level_up()
+    if config.getboolean('ACTIVITIES', 'push_dream_realm'):
+        blind_push("dream_realm")
     if config.getboolean('ACTIVITIES', 'farm_affinity'):
         farm_affinity()
     logger.info('Dailies done!')
