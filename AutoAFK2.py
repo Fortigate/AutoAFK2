@@ -182,8 +182,8 @@ def dailies():
         blind_push("daily_towers")
     if config.getboolean('ACTIVITIES', 'collect_quests'):
         collect_quests()
-    # if config.getboolean('ACTIVITIES', 'claim_events'):
-    #     claim_events()
+    if config.getboolean('ACTIVITIES', 'claim_events'):
+        claim_events()
     if config.getboolean('ACTIVITIES', 'noble_path'):
         noble_path()
     if config.getboolean('ACTIVITIES', 'level_up'):
@@ -676,49 +676,69 @@ def noble_path():
 def claim_events():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     logger.info('Claiming event rewards')
-    click('buttons/main_menu', region=regions['main_menu'], seconds=3)
-    click('buttons/event', region=regions['menu_activities'], seconds=3)
+    # click('buttons/main_menu', region=regions['main_menu'], seconds=3)
+    # click('buttons/event', region=regions['menu_activities'], seconds=3)
 
-    # Timeless Gala
-    if isVisible('events/timeless_gala_active', seconds=2) or isVisible('events/timeless_gala_inactive', click=True, seconds=2):
-        clickXY(750, 750, seconds=2)
-        while isVisible('events/collect_gala', region=[650, 1100, 400, 550]):
-            click('events/collect_gala')
-        logger.info('Timeless Gala claimed')
+    # Guild Supremacy
+    clickXY(770, 1830, seconds=4)
+    if isVisible('labels/guild_supremacy'):
+        clickXY(530, 1820, seconds=2) # Tap to Close
+        clickXY(1000, 100)
+        if isVisible('labels/guild_medal_reward'):
+            clickXY(530, 1820, seconds=2)  # Tap to Close
+            logger.info('Daily Guild Supremacy rewards collected!')
+        else:
+            logger.info('Guild Supremacy rewards not found, recovering..')
+            recover()
+    else:
+        logger.info('Guild Supremacy contribution screen not found!')
 
-    # All Heroes
-    if isVisible('events/all_heroes', seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
-        if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
-            logger.info('All Heroes claimed')
-            click_location('neutral')
-
-    # Swipe left for the next events
-    swipe(1000, 1800, 250, 1800, 500, seconds=2)
-
-    # Swallows Retreat
-    if isVisible('events/swallows_retreat_inactive', click=True, seconds=2, region=regions['bottom_buttons']):
-        clickXY(350, 1250) # Daily
-        while isVisible('events/collect_sr'):
-            click('events/collect_sr')
-        clickXY(800, 1250) # Special
-        while isVisible('events/collect_sr'):
-            click('events/collect_sr')
-        logger.info('Swallows Retreat claimed')
-
-    # Fishing Diary
-    if isVisible('events/fishing_diary_inactive', click=True, seconds=3, region=regions['bottom_buttons']):
-        if isVisible('buttons/collect', click=True, confidence=0.8):
-            logger.info('Fishing Diary claimed')
-
-    click('buttons/back', region=regions['back'])
-    click('buttons/back', region=regions['back'])
+    # # Timeless Gala
+    # if isVisible('events/timeless_gala_active', seconds=2) or isVisible('events/timeless_gala_inactive', click=True, seconds=2):
+    #     clickXY(750, 750, seconds=2)
+    #     while isVisible('events/collect_gala', region=[650, 1100, 400, 550]):
+    #         click('events/collect_gala')
+    #     logger.info('Timeless Gala claimed')
+    #
+    # # All Heroes
+    # if isVisible('events/all_heroes', seconds=2) or isVisible('events/all_heroes_inactive', click=True, seconds=2):
+    #     if isVisible('events/all_heroes_claim', click=True, confidence=0.8, retry=10, yrelative=100):
+    #         logger.info('All Heroes claimed')
+    #         click_location('neutral')
+    #
+    # # Swipe left for the next events
+    # swipe(1000, 1800, 250, 1800, 500, seconds=2)
+    #
+    # # Swallows Retreat
+    # if isVisible('events/swallows_retreat_inactive', click=True, seconds=2, region=regions['bottom_buttons']):
+    #     clickXY(350, 1250) # Daily
+    #     while isVisible('events/collect_sr'):
+    #         click('events/collect_sr')
+    #     clickXY(800, 1250) # Special
+    #     while isVisible('events/collect_sr'):
+    #         click('events/collect_sr')
+    #     logger.info('Swallows Retreat claimed')
+    #
+    # # Fishing Diary
+    # if isVisible('events/fishing_diary_inactive', click=True, seconds=3, region=regions['bottom_buttons']):
+    #     if isVisible('buttons/collect', click=True, confidence=0.8):
+    #         logger.info('Fishing Diary claimed')
+    #
+    # click('buttons/back', region=regions['back'])
+    # click('buttons/back', region=regions['back'])
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
 def formation_handler(formation_number=1, already_open=False):
+
     if globals()['load_formations'] is False:
         logger.info('Formation loading disabled')
         return
+
+    if globals()['formation'] > 7:
+        logger.info('Formation selected higher than 7, starting from 1 again..')
+        globals()['formation'] = 1
+
     logger.info('Loading formation #' + str(math.trunc(globals()['formation'])))
     counter = 1
     unowned_counter = 0
@@ -735,6 +755,7 @@ def formation_handler(formation_number=1, already_open=False):
             clickXY(360, 1250)
             clickXY(1000, 1025)
             click('buttons/copy')
+            globals()['formation'] += 1
             unowned_counter += 1
             if unowned_counter > 7:
                 logger.info('All formations contained an unowned hero!')
@@ -758,22 +779,16 @@ def blind_push(mode, tower=None, load_formation=True):
                 if isVisible("towers/lvl", click=True, region=(15, 850, 1050, 800), seconds=3, yrelative=-50, grayscale=True):
                     if isVisible("buttons/battle"):
                         formation_handler()
-                        back_occurence = 0 # Somehow this handles defeats and I'm not sure why
+                        click("buttons/battle")
                         while True:
-                            if isVisible("labels/tap_to_close", click=True, seconds=2):
+                            if isVisible("buttons/next", click=True, retry=3, seconds=5, region=regions['bottom_buttons']):
+                                logger.info(faction + ' win detected, moving to next floor')
+                                click("buttons/battle")
+                            elif isVisible("buttons/retry", region=regions['bottom_buttons']):
+                                logger.info(faction + ' defeat!')
+                                click("buttons/back")
                                 click("buttons/back")
                                 break
-                            elif isVisible("buttons/next", click=True, retry=3, region=regions['bottom_buttons']):
-                                logger.info(faction + ' win detected, moving to next floor')
-                                wait(5)
-                                back_occurence = 0
-                                formation_handler()
-                            elif isVisible("buttons/back"):
-                                if back_occurence == 0:
-                                    back_occurence = 1
-                                else: # Exit if this counter reaches 1
-                                    click("buttons/back")
-                                    break
                             wait(5)
                 else:
                     logger.info('Tower floor not found!')
@@ -786,7 +801,6 @@ def blind_push(mode, tower=None, load_formation=True):
     if mode == "push_tower":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-        first_run = True
         logger.info('Pushing ' + tower.capitalize() + ' tower!\n')
         clickXY(460, 1820, seconds=4)
         click("labels/legend_trial", seconds=2)
@@ -798,10 +812,6 @@ def blind_push(mode, tower=None, load_formation=True):
                     if isVisible("towers/lvl", click=True, region=(15, 850, 1050, 800), seconds=3, yrelative=-50, grayscale=True):
                         formation_handler()
                         while True:
-                            # click("buttons/abyss_lvl", seconds=5, suppress=True, grayscale=True, confidence=0.8)
-                            # if first_run is True:
-                            #     auto_load_formation()
-                            #     first_run = False
                             click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
                             click("buttons/retry", suppress=True, region=regions['bottom_buttons'])
                             if isVisible("buttons/next", click=True, seconds=4, region=regions['bottom_buttons']):
@@ -928,10 +938,11 @@ def blind_push(mode, tower=None, load_formation=True):
                     timeout += 1
                     if timeout > 100: # If nothing at 30 seconds start clicking in case battery saver mode is active
                         if timeout_warned is False:
-                            logger.info('Possibly stuck, checking if it\'s the energysaver screen..')
+                            logger.info('Possibly stuck, attempting to continue..')
                             debug_screen('battle_stuck')
                             timeout_warned = True
-                        click_location('neutral')
+                        clickXY(550, 1100) # Second Battle
+                        clickXY(900, 1800) # Start Battle button
                     if timeout > 200: # Still nothing at 60 seconds? Quit as somethings gone wrong and record the screen for debugging
                         logger.info('Battle timeout error!')
                         debug_screen('battle_timeout')
@@ -1060,6 +1071,7 @@ def handle_charms():
         # Check bottom row
         logger.info('Checking bottom row Charm Trials..')
         globals()['stage_defeats'] = 0
+        globals()['formation'] = 1 # Reset on new levels
         if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1400, 950, 150), confidence=0.75, seconds=3):
             clickXY(750, 1800, seconds=6)
             if isVisible('buttons/sweep_buttons', seconds=0):
@@ -1169,7 +1181,7 @@ if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    level_up()
+    claim_events()
 
 if args['charms']:
     handle_charms()

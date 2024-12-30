@@ -21,13 +21,16 @@ global device
 def connect_and_launch(port, server):
     global device
 
-    # # Establish ADB connection with device
-    # if not get_connected_device():
-    #     # If there is not a device connected already ope ADB and connect using the port in settings.ini
-    device = adb.device(get_adb_device(port))
-    # else:
-    #     # Else connect to the first found device in ADB
-    #     device = get_connected_device()
+    if config.getboolean('ADVANCED', 'auto_find_device'):
+        # Establish ADB connection with device
+        if not get_connected_device():
+            # If there is not a device connected already open ADB and connect using the port in settings.ini
+            pass
+        else:
+            # Else connect to the first found device in ADB
+            device = get_connected_device()
+    else: # If auto_find_device is False we use strict connection using the port in settings.ini only, good for multiple devices or sessions
+        device = adb.device(get_adb_device(port))
 
     # After getting device run a test echo command to make sure the device is active and catch any errors
     try:
