@@ -75,8 +75,8 @@ if args['formation_skip']:
     logger.info('Formation skip active')
     globals()['load_formations'] = False
 
-# Make a nice name for the output log file
-if settings == 'settings.ini':
+# Make a nice name for the output log file if it's the default
+if str(settings.split('\\')[-1]) == 'settings.ini':
     logname = 'autoafk2.log'
 else:
     logname = settings.split('.')[0] + '.log'
