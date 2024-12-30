@@ -24,7 +24,7 @@ global first_stage_won
 first_stage_won = False
 
 # placeholder gets replaced during build process with release tag.
-version = '<DEVELOPMENT_VERSION>'
+version = '0.9.14'
 
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
@@ -645,27 +645,27 @@ def noble_path():
     def claim_and_collect(italics=True):
         # This will claim quests/collet rewards
         clickXY(750, 450) # Click Quests
-        if isVisible('buttons/claim_all_italics', click=True, region=regions['bottom_third']):
+        if isVisible('buttons/quick_claim', click=True, region=regions['bottom_third'], seconds=5): # Can also be 'claim_all_italics'
             clickXY(1000, 1800) # Clear Loot
-        # Travelogue
-        clickXY(350, 450) # Click Trek
-        if isVisible('buttons/claim_all_italics', click=True, region=regions['bottom_third']):
-            clickXY(1000, 1800) # Clear Loot
+        # # Travelogue
+        # clickXY(350, 450) # Click Trek
+        # if isVisible('buttons/claim_all_italics', click=True, region=regions['bottom_third']):
+        #     clickXY(1000, 1800) # Clear Loot
 
     # Fabled Road
     logger.info('    Checking Fabled Road')
     if isVisible('buttons/fabled_road_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/fabled_road_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
         claim_and_collect()
 
-    # Seasonal Noble Path
-    logger.info('    Checking Season Noble Path')
-    if isVisible('buttons/noble_season_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_season_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
-        claim_and_collect()
-
-    # Noble Path
-    logger.info('    Checking Noble Path')
-    if isVisible('buttons/noble_path_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
-        claim_and_collect()
+    # # Seasonal Noble Path
+    # logger.info('    Checking Season Noble Path')
+    # if isVisible('buttons/noble_season_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_season_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+    #     claim_and_collect()
+    #
+    # # Noble Path
+    # logger.info('    Checking Noble Path')
+    # if isVisible('buttons/noble_path_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+    #     claim_and_collect()
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Noble path collected!\n')
@@ -1181,7 +1181,7 @@ if args['dream']:
     blind_push('dream_realm')
 
 if args['test']:
-    claim_events()
+    noble_path()
 
 if args['charms']:
     handle_charms()
