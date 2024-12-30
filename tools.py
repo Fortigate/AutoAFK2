@@ -21,16 +21,8 @@ global device
 def connect_and_launch(port, server):
     global device
 
-    if config.getboolean('ADVANCED', 'auto_find_device'):
-        # Establish ADB connection with device
-        if not get_connected_device():
-            # If there is not a device connected already open ADB and connect using the port in settings.ini
-            pass
-        else:
-            # Else connect to the first found device in ADB
-            device = get_connected_device()
-    else: # If auto_find_device is False we use strict connection using the port in settings.ini only, good for multiple devices or sessions
-        device = adb.device(get_adb_device(port))
+    # Find and connect to the device
+    device = get_adb_device(port)
 
     # After getting device run a test echo command to make sure the device is active and catch any errors
     try:
@@ -41,21 +33,25 @@ def connect_and_launch(port, server):
         logger.info('Connection error:')
         nonetype = "'NoneType' object has no attribute 'shell'"
         offline = "ERROR: 'FAIL' 000edevice offline"
+        string = "'str' object has no attribute 'shell'"
         logger.info(e)
         if str(e) == nonetype:
-            logger.info('This is usually caused by there being no ADB device present, check port or manually run \'adb devices\' to check')
+            logger.info('This means there\'s no device at the port in settings.ini, check port number or manually run \'adb devices\' to check')
         if str(e) == offline:
             logger.info('Device found but offline in ADB, try restarting the emulator and connecting again')
+        if str(e) == string:
+            logger.info('Device search returned a string instead of a device, this shouldn\'t happen')
+            manage_adb_exe('restart')
         wait(15)
         sys.exit(2)
 
     # Once we're connected initialise scrcpy
     try:
-        scrcpyClient = scrcpy.Client(device=device.serial)
-        scrcpyClient.max_fps = 5
-        scrcpyClient.bitrate = 16000000
-        scrcpyClient.start(daemon_threaded=True)
-        setattr(device, 'srccpy', scrcpyClient)
+        scrcpy_client = scrcpy.Client(device=device.serial)
+        scrcpy_client.max_fps = 5
+        scrcpy_client.bitrate = 16000000
+        scrcpy_client.start(daemon_threaded=True)
+        setattr(device, 'srccpy', scrcpy_client)
     except Exception as e:
         logger.info('Error starting scrcpy!: ' + str(e))
     finally:
@@ -74,23 +70,48 @@ def connect_and_launch(port, server):
         device.shell('monkey -p ' + server + ' 1')
         wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
 
-def get_adb_device(port):
+def manage_adb_exe(command, device_name='127.0.0.1:5555'):
     # Get the right ADB path depending on whether we run from Pycharm or compiled .exe
-    if os.path.isfile((cwd + '\output\\autoafk2\\adbutils\\binaries\\adb.exe')):
-        adbpath = os.path.join(cwd, 'output', 'autoafk2', 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
+    if os.path.isfile((cwd + '\\output\\adb\\adb.exe')):
+        adbpath = os.path.join(cwd, 'output', 'adb', 'adb.exe')  # Locate adb.exe in working directory
     else:
         adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
 
-    # if len(adb.devices()) > 0:
-    #     for active_devices in adb.devices():
-    #         if active_devices.serial[0] == 'e': # If it starts with 'e' (basically 'emulator-####')
-    #             return active_devices.serial
-    # elif len(adb.devices()) < 1: # Else manually connect using port
-    device_name = '127.0.0.1:' + port
-    Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
-    return device_name
+    if command == 'start':
+        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
 
-# Confirms that the game has loaded by checking for the sunandstars icon next to the minimap. We press a few buttons to navigate back if needed
+    if command == 'restart':
+        Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
+        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
+
+    if command == 'connect':
+        # logger.info(Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0].decode())
+        Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
+
+def get_adb_device(port):
+    # Start ADB if it's not running already
+    try:
+        adb.devices()
+    except:
+        manage_adb_exe('start')
+
+    # If adb.devices contains devices and we can have auto-connect enabled we use the first one returned
+    if adb.devices() and config.getboolean('ADVANCED', 'auto_find_device') is True:
+        devices = adb.devices()
+        return devices[0]
+    # Else manually connect using port in settings.ini
+    else:
+        logger.info('Connecting manually with port: ' + port)
+        device_name = '127.0.0.1:' + port
+        manage_adb_exe('connect', device_name)
+        for found_devices in adb.devices():
+            if found_devices.serial[-4:] == port: # If device's port matches setting's port return the device
+                return found_devices
+        # Else report nothing found
+        logger.info('No device found with port ' + port)
+
+
+# Confirms that the game has loaded by checking for the 'Guild' text. We press a few buttons to navigate back if needed
 def waitUntilGameActive():
     logger.info('Waiting for game to load..')
     timeoutcounter = 0
@@ -387,21 +408,3 @@ def safe_open_and_close(name, state):
             timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
             save_screenshot(name + '_close_error_' + timestamp)
             logger.info('Issue closing ' + name + '.')
-
-# Checks if there is already adb connection active so it doesnt kill it and start again (when executing this from AutoAFK)
-def get_connected_device():
-    if os.path.isfile((cwd + '\output\\autoafk2\\adbutils\\binaries\\adb.exe')):
-        adbpath = os.path.join(cwd, 'output', 'autoafk2', 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in internal directory
-    else:
-        adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
-
-    try: 
-        devices = adb.devices()
-        if devices:
-            return devices[0]
-    except:
-        Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
-        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
-        wait(2)
-        return None
-

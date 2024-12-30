@@ -82,7 +82,6 @@ else:
     logname = settings.split('.')[0] + '.log'
 
 from threading import Event
-import keyboard
 
 hotkey = 'F10'
 
