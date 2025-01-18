@@ -20,6 +20,7 @@ global device
 
 def connect_and_launch(port, server):
     global device
+    counter = 0
 
     # Find and connect to the device
     device = get_adb_device(port)
@@ -67,8 +68,11 @@ def connect_and_launch(port, server):
     device.shell('monkey -p ' + server + ' 1')
     wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
     while device.shell('pidof ' + server) == '':
+        counter += 1
         device.shell('monkey -p ' + server + ' 1')
         wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
+        if counter > 5:
+            logger.warning('Attempting to launch AFK Journey, but cannot detect AFK Journey running')
 
 def manage_adb_exe(command, device_name='127.0.0.1:5555'):
     # Get the right ADB path depending on whether we run from Pycharm or compiled .exe
@@ -278,6 +282,7 @@ def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=Fal
             y_center = round(y + h/2)
             device.input_tap(x_center, y_center)
             wait(seconds)
+            return
         else:
             if suppress is not True:
                 logger.info('Image:' + image + ' not found!')

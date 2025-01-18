@@ -24,7 +24,7 @@ global first_stage_won
 first_stage_won = False
 
 # placeholder gets replaced during build process with release tag.
-version = '3.1.1'
+version = '3.2.1'
 
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
@@ -50,6 +50,7 @@ parser.add_argument("-afks", action='store_true', help="Run AFK Stages")
 parser.add_argument("-afkt", action='store_true', help="Run AFK Talent Stages")
 parser.add_argument("-test", action='store_true', help="Used for testing functions")
 parser.add_argument("-charms", action='store_true', help="Run the Dura's Trials function")
+parser.add_argument("-proxy", action='store_true', help="Run the Chain AFK Proxy function")
 parser.add_argument("-fs", "--formation_skip", action='store_true', help="Don't load formations")
 # Configurations
 parser.add_argument("-s", "--server", choices=['global', 'vn'], default='global', help="Select alernative game servers")
@@ -158,7 +159,8 @@ ctypes.windll.kernel32.SetConsoleTitleW("AutoAFK2 v" + version)
 # Boot up activities before tasks are ran
 connect_and_launch(port=config.get('ADVANCED', 'port'), server=globals()['server'])
 resolutionCheck()
-waitUntilGameActive()
+if not args['proxy']:
+    waitUntilGameActive()
 
 # TODO single SA battle and daily GS collection
 def dailies():
@@ -583,30 +585,36 @@ def level_up():
     logger.info('Levelling available heroes')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-    # Open Heroes Hall
-    clickXY(650, 1850, seconds=3)
-
     # Clicks the central button when leveling uses Dust rather than XP, then presses back to return to the selected hero screen
     def dust_level():
         if isVisible('buttons/level_up', region=(500, 1725, 260, 100), seconds=0):  # Region in the centre for the 10th level 'Level Up' button
             click('buttons/level_up', region=regions['bottom_third'], seconds=4)
-            # click('buttons/back', region=regions['bottom_third'])
 
-    # Click to open hero
-    while isVisible('buttons/levelup_double', region=regions['levelup']) or isVisible('buttons/levelup_single', region=regions['levelup']):
-        logger.info('Hero found!')
-        click('buttons/levelup_double', region=regions['levelup'], suppress=True, retry=1)
-        click('buttons/levelup_single', region=regions['levelup'], suppress=True, retry=1)
-        # Keep clicking to level
-        while isVisible('buttons/levelup_double', region=regions['levelup_hero'], seconds=0):
-            dust_level()
-            swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
-            dust_level()
-        while isVisible('buttons/levelup_single', region=regions['levelup_hero'], seconds=0):
-            dust_level()
-            swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
-            dust_level()
-        click('buttons/back', region=regions['bottom_third'], seconds=3, suppress=True, retry=1) # Back to Hero Box
+    # Open Heroes Hall
+    clickXY(650, 1850, seconds=3)
+
+    # Level up all if enabled
+    if config.getboolean('ADVANCED', 'use_level_up_all'):
+        while isVisible('buttons/level_up_all_active', region=regions['bottom_third'], confidence=0.92):
+            click('buttons/level_up_all_active', region=regions['bottom_third'], confidence=0.92) # sligtly higher confidence as inactive is the same but greyscale
+            logger.info('Level up all clicked!')
+    # Else we level the heros individually
+    else:
+        # Click to open hero
+        while isVisible('buttons/levelup_double', region=regions['levelup']) or isVisible('buttons/levelup_single', region=regions['levelup']):
+            logger.info('Hero found!')
+            click('buttons/levelup_double', region=regions['levelup'], suppress=True, retry=1)
+            click('buttons/levelup_single', region=regions['levelup'], suppress=True, retry=1)
+            # Keep clicking to level
+            while isVisible('buttons/levelup_double', region=regions['levelup_hero'], seconds=0):
+                dust_level()
+                swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
+                dust_level()
+            while isVisible('buttons/levelup_single', region=regions['levelup_hero'], seconds=0):
+                dust_level()
+                swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
+                dust_level()
+            click('buttons/back', region=regions['bottom_third'], seconds=3, suppress=True, retry=1) # Back to Hero Box
 
     logger.info('Done!')
 
@@ -657,16 +665,16 @@ def noble_path():
         # if isVisible('buttons/claim_all_italics', click=True, region=regions['bottom_third']):
         #     clickXY(1000, 1800) # Clear Loot
 
-    # Fabled Road
-    logger.info('    Checking Fabled Road')
-    if isVisible('buttons/fabled_road_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/fabled_road_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+    # # Fabled Road
+    # logger.info('    Checking Fabled Road')
+    # if isVisible('buttons/fabled_road_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/fabled_road_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
+    #     claim_and_collect()
+
+    # Seasonal Noble Path
+    logger.info('    Checking Season Noble Path')
+    if isVisible('buttons/noble_season_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_season_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
         claim_and_collect()
 
-    # # Seasonal Noble Path
-    # logger.info('    Checking Season Noble Path')
-    # if isVisible('buttons/noble_season_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_season_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
-    #     claim_and_collect()
-    #
     # # Noble Path
     # logger.info('    Checking Noble Path')
     # if isVisible('buttons/noble_path_active', region=regions['bottom_third'], seconds=2, grayscale=True) or isVisible('buttons/noble_path_inactive', region=regions['bottom_third'], click=True, seconds=2, grayscale=True):
@@ -818,11 +826,22 @@ def blind_push(mode, tower=None, load_formation=True):
                         formation_handler()
                         while True:
                             click("buttons/battle", suppress=True, region=regions['bottom_buttons'])
-                            click("buttons/retry", suppress=True, region=regions['bottom_buttons'])
                             if isVisible("buttons/next", click=True, seconds=4, region=regions['bottom_buttons']):
                                 logger.info(faction.capitalize() + ' win detected, moving to next floor\n')
+                                globals()['stage_defeats'] = 0
                                 formation_handler()
-                                click("buttons/battle", seconds=3, suppress=True)
+                            if isVisible("buttons/retry", click=True, region=regions['bottom_buttons']):
+                                # Increment defeats
+                                globals()['stage_defeats'] += 1
+                                # If were past the defeat cap handle formation change, else standard log output
+                                if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
+                                    globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
+                                    logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
+                                    wait()
+                                    formation_handler(globals()['formation'])
+                                else:
+                                    logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
+
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Towers pushed!\n')
@@ -946,8 +965,8 @@ def blind_push(mode, tower=None, load_formation=True):
                 logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
                 clickXY(730, 1800, seconds=3)
                 blind_push('afkstages', load_formation=False)
-            # Battle button indicated victory, we run the victory logic
-            if isVisible('buttons/battle', region=regions['bottom_buttons']):
+            # If there's no 'Retry' button post battle, we assume victory (as normal and talent stages have different buttons here to continue)
+            else:
                 globals()['stage_defeats'] = 0  # Reset defeats
                 globals()['formation'] = 1  # Reset formation
                 logger.info('Victory! Stage passed\n')
@@ -1032,16 +1051,51 @@ def blind_push(mode, tower=None, load_formation=True):
             recover()
 
 def open_afk_stages(afkstages=True):
-    clickXY(100, 1800, seconds=4)  # Open AFK Rewards
+
+    # open afk stage screen without prompting loot if it's >1h uncollected
+    clickXY(450, 1825, seconds=3)
+    click('buttons/afk_stage', region=regions['battle_modes'], seconds=4)
+
     if afkstages is True: # Standard Stage
         logger.info('Opening AFK Stages')
         logger.info('Changing formations after ' + str(config.getint('PUSHING', 'defeat_limit')) + ' defeats\n')
-        clickXY(715, 1600, seconds=3)  # Battle
-        clickXY(715, 1600, seconds=2)  # Battle (again since first can claim afk rewards when its >1h)
+        # 3 clicks, first can collect loot, second can prompt 'Are you sure?' popup, 3rd opens stages for sure.
+        clickXY(715, 1600, seconds=2)  # AFK Stage button
+        click('buttons/confirm', suppress=True)
     else: # Talent Stage
-        logger.info('Opening Talent Stages\n')
-        clickXY(370, 1600, seconds=3)  # Battle
-        clickXY(370, 1600, seconds=2)  # Battle (again since first can claim afk rewards when its >1h)
+        logger.info('Opening Talent Stages')
+        logger.info('Changing formations after ' + str(config.getint('PUSHING', 'defeat_limit')) + ' defeats\n')
+        clickXY(370, 1600, seconds=2)  # AFK Stage button
+        click('buttons/confirm', suppress=True)
+
+def afk_stage_chain_proxy():
+    formation_handler()
+    click('buttons/battle', retry=1, suppress=True, seconds=0, region=regions['bottom_third'])
+    click('buttons/confirm', retry=1, suppress=True, seconds=0)
+    while True:
+        # Victory Logic
+        if isVisible('buttons/next', retry=1, click=True, seconds=3):
+            click('buttons/battle', retry=1, suppress=True, seconds=5, region=regions['bottom_third'])
+            logger.info('Victory!\n')
+            globals()['stage_defeats'] = 0
+            formation_handler()
+            click('buttons/battle', retry=1, suppress=True, seconds=0, region=regions['bottom_third'])
+            click('buttons/confirm', retry=1, suppress=True, seconds=0)
+        # Defeat logic
+        if isVisible('buttons/retry', retry=1, click=True, seconds=4, region=(650, 1750, 200, 150)):
+            # Increment defeats
+            globals()['stage_defeats'] += 1
+            # If were past the defeat cap handle formation change, else standard log output
+            if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
+                globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
+                logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
+                formation_handler(globals()['formation'])
+                click('buttons/battle', retry=1, suppress=True, seconds=0)
+                click('buttons/confirm', retry=1, suppress=True, seconds=0)
+            else:
+                logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
+                click('buttons/battle', suppress=True, seconds=0, region=regions['bottom_third'])
+                click('buttons/confirm', suppress=True, seconds=0)
 
 def handle_charms():
 
@@ -1154,21 +1208,18 @@ def handle_charms():
 def quest_push():
     logger.info('Pushing Quests!\n')
     # The order of these is important
-    buttons = ['buttons/battle', 'buttons/skip', 'buttons/dialogue_option', 'buttons/confirm', 'buttons/red_dialogue', 'buttons/interact',
-               'buttons/dialogue', 'buttons/tap_and_hold', 'buttons/enter', 'buttons/chest', 'buttons/battle_button', 'labels/questrewards',
-               'buttons/woi_ship', 'labels/tap_to_close', 'buttons/track', 'labels/woi', 'labels/woi2']
-    while True:
+    buttons = ['buttons/battle', 'buttons/skip', 'buttons/dialogue_option', 'buttons/confirm', 'buttons/red_dialogue', 'buttons/dialogue_coe',
+               'buttons/blue_dialogue', 'buttons/interact', 'buttons/dialogue', 'buttons/tap_and_hold', 'buttons/enter', 'buttons/chest',
+               'buttons/battle_button', 'labels/questrewards', 'labels/tap_to_close', 'buttons/track', 'labels/coe']
 
-        click_array(buttons, suppress=True, confidence=0.95)
+    while True:
+        click_array(buttons, suppress=True, confidence=0.91)
         if isVisible('buttons/tap_and_hold', region=regions['chat_window'], seconds=0):
             logger.info('Holding button')
             swipe(550, 1250, 550, 1250, 4000)  # Hacky way to hold it down
-
-# Placeholder for when I get round to it
-#def run_lab():
-#    if lab is not completed:
-#        run_lab()
-
+        if isVisible('labels/time_change', region=regions['chat_window'], seconds=0, yrelative=620, click=True):
+            logger.info('Time changed!')
+            wait(4)
 
 # Handle launch arguments
 
@@ -1222,6 +1273,11 @@ if args['test']:
 if args['charms']:
     handle_charms()
 
+if args['proxy']:
+    logger.info('\n')
+    logger.info('Starting up Chain Proxy farming\n')
+    afk_stage_chain_proxy()
+
 if args['afks']:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     open_afk_stages(afkstages=True)
@@ -1234,7 +1290,7 @@ if args['afkt']:
 
 # If no function launch argument we pop the UI
 
-options = ["Run Dailies", "Push Towers", "Push AFK Stages", "Push AFK Talent Stages", "Push Dura's Trials", "Run Quests", "Use Dream Realm attempts", "Farm Team-Up Chat"]
+options = ["Run Dailies", "Push Towers", "Push AFK Stages", "Push AFK Talent Stages", "Push Dura's Trials", "Run Quests", "Use Dream Realm attempts", "Farm Team-Up Chat", "Farm Chain AFK Proxy Request"]
 selection = SelectionMenu.get_selection(options, title='Welcome to AutoAFK2! Select an activity:', subtitle='Note that to stop a task or start a new one you have to restart the bot. Questions? Jc.2 @ Discord')
 selection += 1 # Non-zero index to make things easier to read
 
@@ -1332,4 +1388,8 @@ if selection == 8:
     while time.time() - start_time < limit:
         team_up()
 
+if selection == 9:
+    logger.info('Starting up Chain Proxy farming')
+    logger.info('For this function you need to open the request yourself and start this function at the stage setup screen\n')
 
+    afk_stage_chain_proxy()
