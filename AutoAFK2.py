@@ -755,6 +755,7 @@ def formation_handler(formation_number=1, already_open=False):
     logger.info('Loading formation #' + str(math.trunc(globals()['formation'])))
     counter = 1
     unowned_counter = 0
+    wait()
     if already_open is False: # Sometimes we're already in the formations menu
         click('buttons/records', seconds=3)
     while counter != formation_number:
@@ -772,6 +773,8 @@ def formation_handler(formation_number=1, already_open=False):
             unowned_counter += 1
             if unowned_counter > 7:
                 logger.info('All formations contained an unowned hero!')
+                click_location('neutral') # Close windows back to battle screen
+                click_location('neutral') # Close windows back to battle screen
                 break
     click('buttons/confirm', suppress=True)
 
@@ -1102,11 +1105,55 @@ def handle_charms():
     # Handles navigating the charms screen
     def go_back(exit_mode=False):
         click('buttons/confirm', suppress=True)
-        click('buttons/back', suppress=True)
-        click('buttons/back', suppress=True)
+        click('buttons/back2', suppress=True, region=regions['bottom_buttons'])
         if exit_mode is True:
             click('buttons/back', suppress=True)
             click('buttons/back2', suppress=True)
+
+    # Handle Battles
+    def handle_battle(floor_type=''):
+        while True:
+            click('buttons/battle', retry=1, suppress=True, seconds=0)
+            if isVisible('labels/multiple_attempts', seconds=0):
+                logger.info('Out of tries!\n')
+                click('buttons/confirm')
+                if floor_type == 'nightmare': # Exit back to charm row selection screen
+                    click('buttons/back', suppress=True, seconds=2)
+                    click('buttons/back2', suppress=True, seconds=2)
+                else: # Else just exit back to the Dawnrise/Nightmare screen to we can naviate to Nightmare next
+                    click('buttons/back', suppress=True, seconds=2)
+                break
+            click('buttons/confirm', retry=1, suppress=True, seconds=0)
+            if isVisible('buttons/retry', retry=1, click=True, seconds=4, region=(650, 1750, 200, 150)):
+                # Increment defeats
+                globals()['stage_defeats'] += 1
+                # If were past the defeat cap handle formation change, else standard log output
+                if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
+                    globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING',
+                                                                                         'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
+                    logger.info('Defeat #' + str(globals()['stage_defeats']) + ' trying next formation')
+                    formation_handler(globals()['formation'])
+                else:
+                    logger.info('Defeat #' + str(globals()['stage_defeats']) + ' Retrying')
+            # Handle different victory screens for Dawnrise/Nightmare
+            if floor_type == 'dawnrise':
+                if isVisible('buttons/next2', retry=1, click=True, seconds=5):
+                    logger.info('Victory!\n')
+                    globals()['stage_defeats'] = 0
+                    formation_handler()
+                if isVisible('buttons/retry2', retry=1, seconds=5):
+                    logger.info('Victory! Highest stage cleared!\n')
+                    click('buttons/back', suppress=True, seconds=2)
+                    break
+            elif floor_type == 'nightmare':
+                if isVisible('buttons/continue_green', retry=1, click=True, seconds=5, grayscale=False, confidence=0.95): # High confidence so we don't catch the greyscale version
+                    logger.info('Victory!\n')
+                    globals()['stage_defeats'] = 0
+                    formation_handler()
+                if isVisible('buttons/continue_green', retry=1, click=True, seconds=5):
+                    logger.info('Victory! Highest stage cleared!\n')
+                    click('buttons/back', suppress=True, seconds=2)
+                    click('buttons/back2', suppress=True, seconds=2)
 
     top_max_floor = False
     bottom_max_floor = False
@@ -1123,74 +1170,62 @@ def handle_charms():
 
     if isVisible('buttons/featured_heroes', retry=5, region=regions['top_third']):
 
+    # TODO Rewrite using regions for the 6 charm stages, to better handle duplicate code for top/bottom row
+
         # Check top row
         logger.info('Checking top row Charm Trials..')
         globals()['stage_defeats'] = 0
         if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1175, 950, 150), confidence=0.75, seconds=4):
-            clickXY(750, 1800, seconds=6)
-            if isVisible('buttons/sweep_buttons', seconds=0):
-                logger.info('Max floor reached! Checking bottom row..\n')
-                top_max_floor = True
-                go_back()
-            if top_max_floor is False:
+
+            # Handle top row Dawnrise
+            logger.info('Checking Dawnrise')
+            clickXY(400, 1800, seconds=7)
+            if isVisible('buttons/sweep', seconds=0, retry=2, region=regions['bottom_third']):
+                logger.info('Max Dawnrise floor reached!\n')
+            else:
+                if isVisible('buttons/battle', click=True, seconds=6, region=regions['bottom_third']):
+                    logger.info('Dawnrise battle found!\n')
+                    formation_handler(globals()['formation'])
+                    handle_battle(floor_type='dawnrise')
+
+            # Handle top row Nightmare
+            logger.info('Checking Nightmare')
+            clickXY(830, 1800, seconds=7)
+            if isVisible('buttons/battle', click=True, seconds=6, region=regions['bottom_third']):
                 formation_handler(globals()['formation'])
-                while 1 == 1:
-                    click('buttons/battle', retry=1, suppress=True, seconds=0)
-                    if isVisible('labels/multiple_attempts', seconds=0):
-                        logger.info('Out of tries! Checking bottom row..\n')
-                        go_back()
-                        break
-                    click('buttons/confirm', retry=1, suppress=True, seconds=0)
-                    if isVisible('buttons/retry', retry=1, click=True, seconds=4, region=(650, 1750, 200, 150)):
-                        # Increment defeats
-                        globals()['stage_defeats'] += 1
-                        # If were past the defeat cap handle formation change, else standard log output
-                        if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
-                            globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
-                            logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
-                            formation_handler(globals()['formation'])
-                        else:
-                            logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
-                    if isVisible('buttons/next2', retry=1, click=True, seconds=5):
-                        logger.info('Victory!\n')
-                        globals()['stage_defeats'] = 0
-                        formation_handler()
+                handle_battle(floor_type='nightmare')
+            else:
+                logger.info('Max Nightmare floor reached!\n')
+                click('buttons/back2', suppress=True, seconds=2)
         else:
             logger.info("Top row not found..")
 
         # Check bottom row
-        logger.info('Checking bottom row Charm Trials..')
+        logger.info('Checking bottom row Charm Dawnrise Trials..')
         globals()['stage_defeats'] = 0
         globals()['formation'] = 1 # Reset on new levels
         if isVisible('buttons/rate_up', grayscale=True, click=True, region=(50, 1400, 950, 150), confidence=0.75, seconds=3):
-            clickXY(750, 1800, seconds=6)
-            if isVisible('buttons/sweep_buttons', seconds=0):
-                logger.info('Max floor reached! Checking bottom row..\n')
-                bottom_max_floor = True
-                go_back()
-            if bottom_max_floor is False:
-                formation_handler()
-                while 1 == 1:
-                    click('buttons/battle', retry=1, suppress=True, seconds=0)
-                    if isVisible('labels/multiple_attempts', seconds=0):
-                        logger.info('Out of tries! Exiting..\n')
-                        go_back(exit_mode=True)
-                        break
-                    click('buttons/confirm', retry=1, suppress=True, seconds=0)
-                    if isVisible('buttons/retry', retry=1, click=True, seconds=4, region=(650, 1750, 200, 150)):
-                        # Increment defeats
-                        globals()['stage_defeats'] += 1
-                        # If were past the defeat cap handle formation change, else standard log output
-                        if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
-                            globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
-                            logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
-                            formation_handler(globals()['formation'])
-                        else:
-                            logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
-                    if isVisible('buttons/next2', retry=1, click=True, seconds=5):
-                        logger.info('Victory!')
-                        globals()['stage_defeats\n'] = 0
-                        formation_handler()
+
+            # Handle bottom row Dawnrise
+            logger.info('Checking Dawnrise')
+            clickXY(400, 1800, seconds=7)
+            if isVisible('buttons/sweep', seconds=0, retry=2, region=regions['bottom_third']):
+                logger.info('Max Dawnrise floor reached!\n')
+            else:
+                if isVisible('buttons/battle', click=True, seconds=6, region=regions['bottom_third']):
+                    logger.info('Dawnrise battle found!\n')
+                    formation_handler(globals()['formation'])
+                    handle_battle(floor_type='dawnrise')
+
+            # Handle bottom row Nightmare
+            logger.info('Checking Nightmare')
+            clickXY(830, 1800, seconds=7)
+            if isVisible('buttons/battle', click=True, seconds=6, region=regions['bottom_third']):
+                formation_handler(globals()['formation'])
+                handle_battle(floor_type='nightmare')
+            else:
+                logger.info('Max Nightmare floor reached!\n')
+                go_back(exit_mode=True)
         else:
             logger.info("Bottom row not found..")
     else:
@@ -1305,7 +1340,7 @@ if selection == 2:
                    4: ["Push Graveborn Tower"],
                    5: ["Push Lightbringer Tower", "Push Mauler Tower"],
                    6: ["Push Wilder Tower", "Push Graveborn Tower"],
-                   7: ["Push Lightbringer Tower", "Push Wilder Tower", "Push Mauler Tower", "Push Graveborn Tower"]}
+                   7: ["Push Lightbringer Tower", "Push Wilder Tower", "Push Graveborn Tower", "Push Mauler Tower"]}
 
     # Add tower to the list if it's unlocked
     for day, towers in open_towers.items():
@@ -1344,12 +1379,16 @@ if selection == 2:
 
     if selection == 3:
         if day == 7:
-            blind_push('push_tower', 'wilder')
+            blind_push('push_tower', 'graveborn')
 
     if selection == 4:
         day = currenttimeutc.isoweekday()
         if day == 7:
             blind_push('push_tower', 'mauler')
+
+    if selection == 5:
+        SelectionMenu.get_selection(options, title='Welcome to AutoAFK2! Select an activity:', subtitle='Note that to stop a task or start a new one you have to restart the bot. Questions? Jc.2 @ Discord')
+        selection += 1 # Non-zero index to make things easier to read
 
 if selection == 3:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
