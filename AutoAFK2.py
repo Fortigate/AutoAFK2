@@ -24,7 +24,7 @@ global first_stage_won
 first_stage_won = False
 
 # placeholder gets replaced during build process with release tag.
-version = '3.2.1'
+version = '3.3.1b'
 
 # Current time in UTC for tracking which towers/events are open
 currenttimeutc = datetime.now(timezone.utc)
@@ -761,6 +761,7 @@ def formation_handler(formation_number=1, already_open=False):
     while counter != formation_number:
         clickXY(1000, 1025)
         counter += 1
+
     click('buttons/copy', seconds=2)
     # Handle 'Hero not owned' popup
     if isVisible('labels/not_owned'):
@@ -776,7 +777,7 @@ def formation_handler(formation_number=1, already_open=False):
                 click_location('neutral') # Close windows back to battle screen
                 click_location('neutral') # Close windows back to battle screen
                 break
-    click('buttons/confirm', suppress=True)
+    click('buttons/confirm', suppress=True, seconds=0)
 
 def blind_push(mode, tower=None, load_formation=True):
 
@@ -931,7 +932,6 @@ def blind_push(mode, tower=None, load_formation=True):
     # For pushing afk stages
     if mode == 'afkstages':
         timeout = 0
-        timeout_warned = False
         if isVisible('buttons/records', region=regions['bottom_buttons'], seconds=0, retry=20):
 
             # Change formation if we we beat the 2nd round or have defeat >10 times in a row
@@ -952,8 +952,9 @@ def blind_push(mode, tower=None, load_formation=True):
             # Start Battle
             click('buttons/battle', retry=5, region=regions['bottom_buttons'], seconds=0)
             click('buttons/confirm', seconds=0, suppress=True)
+            wait(5) # Long wait to stop false positives from the back button on the battle selection screen
 
-            # Wait til we see the back button in the post battle screen
+            # Wait til we see the back button in the post battle screen before running next checks
             while not isVisible('buttons/back', region=regions['bottom_buttons'], seconds=2):
                 timeout += 1
                 if timeout > 30:  # If nothing at 30 seconds start clicking in case battery saver mode is active
@@ -961,96 +962,30 @@ def blind_push(mode, tower=None, load_formation=True):
                 if timeout > 60:  # Still nothing at 60 seconds? Quit as somethings gone wrong
                     logger.info('Battle timeout error!')
                     break
-            wait()
+
+            # Post battle screen detection
+            result = ''
+            while result == '':
+                # Loop the different scenarios until we get an image match ('retry' is defeat, 'battle' is normal stage victory, 'talent_trials' is talent stage victory)
+                images = ['buttons/retry', 'buttons/battle', 'buttons/talent_trials']
+                result = isVisible_array(images, confidence=0.9, seconds=0, retry=1, click=True, region=regions['bottom_buttons'])
+
             # Retry button indicates defeat, we run the defeat logic
-            if isVisible('buttons/retry', region=regions['bottom_buttons']):
+            if result == 'buttons/retry':
                 globals()['stage_defeats'] += 1
                 logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
-                clickXY(730, 1800, seconds=3)
                 blind_push('afkstages', load_formation=False)
-            # If there's no 'Retry' button post battle, we assume victory (as normal and talent stages have different buttons here to continue)
-            else:
+
+            # The other two mean we have a victory
+            elif result == 'buttons/battle' or result == 'buttons/talent_trials':
                 globals()['stage_defeats'] = 0  # Reset defeats
                 globals()['formation'] = 1  # Reset formation
                 logger.info('Victory! Stage passed\n')
-                clickXY(750, 1800, seconds=4)
                 globals()['first_stage_won'] = False
                 blind_push('afkstages', load_formation=True)
-
-            # Season 2 multi battle legacy code
-
-            # # If multis_first_victory we know we've won the first round, if not formation_swap it's not a multi so we jump to the second fight check
-            # if isVisible('labels/multis_first_victory', seconds=0):
-            #     globals()['first_stage_won'] = True
-            # if not isVisible('buttons/formation_swap', seconds=0):
-            #     globals()['first_stage_won'] = True
-            #
-            # # Start Battle
-            # click('buttons/battle', retry=5, region=regions['bottom_buttons'], seconds=0)
-            # click('buttons/confirm', seconds=0, suppress=True)
-            #
-            # # In a multi first stage always gives 'Continue' screen so we check for that for victory/defeat markers
-            # if globals()['first_stage_won'] is False:
-            #     result_value = isVisible_array(['labels/defeat', 'labels/victory'], confidence=0.9)
-            #     # Loop until we see either the Victory or Defeat screen
-            #     while result_value == 'not_found':
-            #         timeout += 1
-            #         if timeout > 100: # If nothing at 30 seconds start clicking in case battery saver mode is active
-            #             if timeout_warned is False:
-            #                 logger.info('Possibly stuck, attempting to continue..')
-            #                 debug_screen('battle_stuck')
-            #                 timeout_warned = True
-            #             clickXY(550, 1100) # Second Battle
-            #             clickXY(900, 1800) # Start Battle button
-            #         if timeout > 200: # Still nothing at 60 seconds? Quit as somethings gone wrong and record the screen for debugging
-            #             logger.info('Battle timeout error!')
-            #             debug_screen('battle_timeout')
-            #             sys.exit(2)
-            #         result_value = isVisible_array(['labels/defeat', 'labels/victory'], confidence=0.9)
-            #         wait()
-            #     timeout = 0 # Reset timer after result found
-            #
-            #     # Take actions for victory or defeat
-            #     if result_value == 'labels/defeat':
-            #         globals()['stage_defeats'] += 1
-            #         logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
-            #         clickXY(550, 1800, seconds=3)
-            #         blind_push('afkstages', load_formation=False)
-            #     elif result_value == 'labels/victory':
-            #         globals()['stage_defeats'] = 0
-            #         logger.info('First round won!')
-            #         clickXY(730, 1800, seconds=3)
-            #         blind_push('afkstages', load_formation=False)
-            #
-            # # Handle second stage or single stage logic
-            # if globals()['first_stage_won'] is True:
-            #     # Wait for battle to end with either Continue button or Back button
-            #     while not isVisible('buttons/continue_stages', region=regions['bottom_buttons']):
-            #         timeout += 1
-            #         if timeout > 30: # If nothing at 30 seconds start clicking in case battery saver mode is active
-            #             click_location('neutral')
-            #         if timeout > 60: # Still nothing at 60 seconds? Quit as somethings gone wrong
-            #             logger.info('Battle timeout error!')
-            #             break
-            #         if isVisible('buttons/back', region=regions['bottom_buttons'], seconds=0):
-            #             break
-            #         wait()
-            #     # Continue on second battle is always defeat
-            #     if isVisible('buttons/continue_stages', region=regions['bottom_buttons']):
-            #         globals()['stage_defeats'] += 1
-            #         logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
-            #         clickXY(730, 1800, seconds=3)
-            #         blind_push('afkstages', load_formation=False)
-            #     # If we see a Back button we're at the Stage Passed screen (or seriously lost)
-            #     if isVisible('buttons/back', region=regions['bottom_buttons']):
-            #         globals()['stage_defeats'] = 0 # Reset defeats
-            #         globals()['formation'] = 1 # Reset formation
-            #         logger.info('Victory! Stage passed\n')
-            #         clickXY(750, 1800, seconds=4)
-            #         globals()['first_stage_won'] = False
-            #         blind_push('afkstages', load_formation=True)
         else:
             logger.info('Something went wrong opening AFK Stages!')
+            save_screenshot('afk_stage_error')
             recover()
 
 def open_afk_stages(afkstages=True):

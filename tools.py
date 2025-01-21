@@ -288,8 +288,6 @@ def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=Fal
                 logger.info('Image:' + image + ' not found!')
         wait(delay)
 
-
-
 # Performs a swipe from X1/Y1 to X2/Y2 at the speed defined in duration (in milliseconds)
 def swipe(x1, y1, x2, y2, duration=100, seconds=1):
     device.input_swipe(x1, y1, x2, y2, duration)
@@ -327,7 +325,6 @@ def isVisible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0,
         wait(seconds)
         return True
     else:
-        # wait(seconds) # Speed up the bot by not waiting when image not found
         return False
 
 # Takes a array of images as input, and returns the first found image from the array. If none are found returns 'not_found'
