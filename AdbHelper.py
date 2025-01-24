@@ -70,7 +70,7 @@ def adb_not_installed():
     elif platform.system().lower() == "windows":
         # windows is currently using injected adb.exe
         return
-        # for future - we could get rid of injected .exe, and used ask user to install it, if it is not installed already
+        # for future - we could get rid of injected .exe, and instead ask user to install it, if it is not installed already
         #
         # print("Windows operating system detected")
         # print("Try using the following command to install adb (launch either PowerShell or CMD in administrator mode)")
