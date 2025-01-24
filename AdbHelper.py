@@ -15,8 +15,6 @@ def manage_adb_exe(command, device_name='127.0.0.1:5555'):
             adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
     else:
         adbpath = "adb"
-        if not adb_exist():
-            adb_not_installed()
 
     if command == 'start':
         Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
