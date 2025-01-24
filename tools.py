@@ -1,16 +1,17 @@
-import os
 import configparser
-import time
 import io
-import scrcpy
-import numpy as np
 import logging
 import sys
-from pyscreeze import locate, locateAll
-from PIL import Image
-from subprocess import Popen, PIPE
-from ppadb.client import Client
+import time
 from datetime import datetime
+
+import numpy as np
+import scrcpy
+from PIL import Image
+from ppadb.client import Client
+from pyscreeze import locate, locateAll
+
+from AdbHelper import *
 
 logger = logging.getLogger('autoafk2')
 cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
@@ -73,26 +74,6 @@ def connect_and_launch(port, server):
         wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
         if counter > 5:
             logger.warning('Attempting to launch AFK Journey, but cannot detect AFK Journey running')
-
-
-# noinspection PyStatementEffect
-def manage_adb_exe(command, device_name='127.0.0.1:5555'):
-    # Get the right ADB path depending on whether we run from Pycharm or compiled .exe
-    if os.path.isfile((cwd + '\\output\\adb\\adb.exe')):
-        adbpath = os.path.join(cwd, 'output', 'adb', 'adb.exe')  # Locate adb.exe in working directory
-    else:
-        adbpath = os.path.join(cwd, 'adbutils', 'binaries', 'adb.exe')  # Locate adb.exe in working directory
-
-    if command == 'start':
-        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
-
-    if command == 'restart':
-        Popen([adbpath, "kill-server"], stderr=PIPE).communicate()[0]
-        Popen([adbpath, "start-server"], stderr=PIPE).communicate()[0]
-
-    if command == 'connect':
-        # logger.info(Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0].decode())
-        Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
 
 def get_adb_device(port):
     # Start ADB if it's not running already

@@ -1,12 +1,16 @@
 import argparse
 import inspect
 import math
-import platform
 
 from humanfriendly import format_timespan
 from tools import * # Includes logging so we don't import here also
 from consolemenu import *
 from datetime import datetime, timezone
+
+# First check if adb is installed. There is no point of doing anything else, if it is not
+if not adb_exist():
+    adb_not_installed()
+    sys.exit()
 
 # Global variables
 last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before opening the first
