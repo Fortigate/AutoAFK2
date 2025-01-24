@@ -1,9 +1,9 @@
-from subprocess import Popen, PIPE, run
-
 import os
 import platform
+from subprocess import Popen, PIPE, run
 
 cwd = os.path.dirname(__file__)  # variable for current directory of AutoAFK.exe
+
 
 # noinspection PyStatementEffect
 def manage_adb_exe(command, device_name='127.0.0.1:5555'):
@@ -29,6 +29,7 @@ def manage_adb_exe(command, device_name='127.0.0.1:5555'):
         # logger.info(Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0].decode())
         Popen([adbpath, 'connect', device_name], stdout=PIPE).communicate()[0]
 
+
 # Check if adb tool is installed
 def adb_exist():
     try:
@@ -48,6 +49,7 @@ def adb_exist():
         # ADB is not found in the system PATH
         print("ADB is not installed or not in PATH.")
         return False
+
 
 # Print information to user that adb is not installed
 # and helpful command that will let user install it

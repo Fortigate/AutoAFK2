@@ -1,11 +1,12 @@
 import argparse
 import inspect
-import math
-
-from humanfriendly import format_timespan
-from tools import * # Includes logging so we don't import here also
-from consolemenu import *
 from datetime import datetime, timezone
+
+import math
+from consolemenu import *
+from humanfriendly import format_timespan
+
+from tools import *  # Includes logging so we don't import here also
 
 # First check if adb is installed. There is no point of doing anything else, if it is not
 if not adb_exist():
@@ -13,7 +14,7 @@ if not adb_exist():
     sys.exit()
 
 # Global variables
-last_synergy = time.time() - 300 # -300 so we don't wait 300 seconds before opening the first
+last_synergy = time.time() - 300  # -300 so we don't wait 300 seconds before opening the first
 last_corrupt = time.time()
 
 # For stage pushing
@@ -54,11 +55,13 @@ parser.add_argument("-c", "--config", metavar="CONFIG", default="settings.ini", 
 parser.add_argument('--forceprint', action='store_true', help='Force print output')
 args = vars(parser.parse_args())
 
+
 def get_current_dir():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     else:
         return cwd
+
 
 settings = os.path.join(get_current_dir(), args['config'])
 config.read(settings)
@@ -85,6 +88,7 @@ hotkey = 'F10'
 running = Event()
 running.set()  # at the start, it is running
 
+
 def handle_key_event(event):
     if event.event_type == 'down':
         # toggle value of 'running'
@@ -94,9 +98,10 @@ def handle_key_event(event):
         else:
             running.set()
 
+
 # make it so that handle_key_event is called when k is pressed; this will
 # be in a separate thread from the main execution
-#keyboard.hook_key(hotkey, handle_key_event)
+# keyboard.hook_key(hotkey, handle_key_event)
 
 # File handler
 file_log_handler = logging.FileHandler(filename=logname)
@@ -112,6 +117,7 @@ logging.basicConfig(format='%(asctime)s %(message)s',
 # Define logger for tools.py usage also
 logger = logging.getLogger('autoafk2')
 
+
 # This logs execptions via logger which is great for finding out what went wrong with unnattended sessions
 # Copied word for word from: https://stackoverflow.com/questions/6234405/logging-uncaught-exceptions-in-python
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -121,11 +127,12 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
     logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
+
 sys.excepthook = handle_exception
 
 # Quick storage for commonly used regions
 regions = {
-    #locate
+    # locate
     'sunandstars': (770, 40, 100, 100),
     'main_menu': (900, 1750, 150, 150),
     'menu_activities': (20, 950, 1050, 800),
@@ -139,7 +146,7 @@ regions = {
     'bottom_buttons': (0, 1620, 1080, 300),
     'confirm_deny': (500, 1100, 500, 300),
     'battle_modes': (20, 580, 1050, 1100),
-    'action_buttons': (400, 1050, 300, 500), # gives out of bounds error and I'm too tired to work out why
+    'action_buttons': (400, 1050, 300, 500),  # gives out of bounds error and I'm too tired to work out why
     'levelup': (150, 900, 950, 50),
     'levelup_hero': (1000, 1700, 80, 60),
     'x3_and_skip': (720, 1450, 350, 110)
@@ -154,17 +161,18 @@ window_name = "AutoAFK2 v" + version
 if platform.system() == "Windows":
     # Windows-specific: Use ctypes to set the console title
     import ctypes
+
     ctypes.windll.kernel32.SetConsoleTitleW(window_name)
 else:
     # Unix-like systems (Linux, macOS): Use escape sequence
     print(f"\033]0;{window_name}\a", end="")
-
 
 # Boot up activities before tasks are ran
 connect_and_launch(port=config.get('ADVANCED', 'port'), server=globals()['server'])
 resolution_check()
 if not args['proxy']:
     wait_until_game_active()
+
 
 # TODO single SA battle and daily GS collection
 def dailies():
@@ -199,11 +207,12 @@ def dailies():
         farm_affinity()
     logger.info('Dailies done!')
 
+
 # Bit of an ugly function, we open the Team-Up chat and scan for the orange Join button and the Synergy Battle label for synergy battles
 def team_up():
     timer = 0
     start = time.time()
-    while True: # Naughty perma-loop, nested inside another when we call this with startup flags so calling 'return' will start from the top
+    while True:  # Naughty perma-loop, nested inside another when we call this with startup flags so calling 'return' will start from the top
 
         # First ensure we're at the main map
         while not is_visible('labels/sunandstars', region=regions['sunandstars'], seconds=0):
@@ -213,7 +222,8 @@ def team_up():
         # Then open team-up chat
         while not is_visible('teamup/teamup', click=True, region=regions['chat_selection']):  # Open the Team-Up section
             click_image('teamup/chat', seconds=2, suppress=True, region=regions['right_sidebar'])  # Open Chat window
-            click_image('teamup/chat_yellow', retry=5, seconds=2, suppress=True, confidence=0.7, region=regions['right_sidebar'])  # Open Chat window
+            click_image('teamup/chat_yellow', retry=5, seconds=2, suppress=True, confidence=0.7,
+                        region=regions['right_sidebar'])  # Open Chat window
 
         # Loop while searching for 'Join' button
         while not is_visible('teamup/join', seconds=0, confidence=0.8, region=regions['chat_window']):
@@ -230,13 +240,13 @@ def team_up():
             if is_visible('teamup/synergy', seconds=0, region=regions['chat_window']):
                 x, y = returnxy('teamup/synergy', region=regions['chat_window'])
                 # We wait 60s between each one else we can end up opening and closing the same one repeatadly
-                if x != 0: # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
+                if x != 0:  # 0 is the 'nothing found' return value from returnxy() so skip if it's returned
                     # If green button found and it's been more than 60s since the last Synergy
-                    if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and (time.time() - globals()['last_synergy'] > 120):
+                    if return_pixel_colour(x, y + 220, 2, seconds=0) < 200 and ( time.time() - globals()['last_synergy'] > 120):
                         logger.info('Synergy Battle found!')
-                        click_xy(x, y + 220) # 220 is the button distance from the label
+                        click_xy(x, y + 220)  # 220 is the button distance from the label
                         if is_visible('buttons/back', region=regions['back']):
-                            click_xy(300, 900) # Second highest power hero (in case you want to save the primary or guildmates/friends)
+                            click_xy(300, 900)  # Second highest power hero (in case you want to save the primary or guildmates/friends)
                             click_xy(650, 1800)
                             click_image('buttons/back', suppress=True, region=regions['back'])
                             logger.info('Hero lent\n')
@@ -258,12 +268,12 @@ def team_up():
         if not is_visible('teamup/ready', region=regions['bottom_buttons']):
             # Try a quit just in case
             click_image('teamup/quit', region=regions['bottom_buttons'], suppress=True)
-            click_image('buttons/confirm', region=regions['confirm_deny'], suppress=True) # to catch 'Reconnect to chat?
+            click_image('buttons/confirm', region=regions['confirm_deny'], suppress=True)  # to catch 'Reconnect to chat?
             return
 
         # Ready up
         click_image('teamup/ready', seconds=4, region=regions['bottom_buttons'])
-        logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!') # Only message after we're in to avoid spam
+        logger.info('Corrupt Creature found in ' + format_timespan(round(duration)) + '!')  # Only message after we're in to avoid spam
 
         # If Quit button is visible 15 cycles after readying up then the host is afk etc so we restart
         while is_visible('teamup/quit', confidence=0.8, region=regions['bottom_buttons']):
@@ -277,19 +287,19 @@ def team_up():
         # Deploy Heroes
         while is_visible('teamup/ready_lobby', confidence=0.8, region=regions['bottom_buttons']):
             logger.info('Deploying heroes')
-            wait(2) # Wait for the emulator to load new assets after moving to battle screen else first click below doesn't register
+            wait(2)  # Wait for the emulator to load new assets after moving to battle screen else first click below doesn't register
             click_xy(120, 1300)
             click_xy(270, 1300)
             click_xy(450, 1300)
             click_image('teamup/ready_lobby', suppress=True, confidence=0.8, region=regions['bottom_buttons'])
-            break # Break loop otherwise if we miss a button due to lag we loop here until battle starts
+            break  # Break loop otherwise if we miss a button due to lag we loop here until battle starts
 
         # Wait until battle finishes
         while not is_visible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons']):
             timer += 1
             if timer > 30:
                 logger.info('Battle timeout error!\n')
-                click_location('neutral') # Neutral taps to try and get back to main map if something went wrong
+                click_location('neutral')  # Neutral taps to try and get back to main map if something went wrong
                 return
         if is_visible('labels/tap_to_close', confidence=0.8, region=regions['bottom_buttons'], click=True):
             logger.info('Battle complete!\n')
@@ -297,6 +307,7 @@ def team_up():
         # Finish up and start the loop again
         globals()['last_corrupt'] = time.time()
         return
+
 
 def start_autoprogress():
     logger.info('Starting Auto-Progress')
@@ -327,7 +338,7 @@ def claim_afk_rewards():
     if is_visible('labels/afk_rewards_coe', region=[0, 680, 150, 200]):
         click_xy(550, 1400)  # Click Chest
         click_xy(550, 1080)  # Click Collect
-        wait(2) # Wait and claim again to complete daily quest
+        wait(2)  # Wait and claim again to complete daily quest
         click_xy(550, 1400)  # Click Chest
         click_xy(550, 1080)  # Click Collect
 
@@ -346,11 +357,12 @@ def claim_afk_rewards():
         logger.info('Issue opening AFK Rewards!')
         recover()
 
+
 def friend_points_collect():
     logger.info('Claiming Friend Gifts')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
-    wait(2) # For things to load
+    wait(2)  # For things to load
     click_image('buttons/main_menu', region=regions['main_menu'])
     click_image('buttons/friends', region=regions['menu_activities'], seconds=2)
 
@@ -365,6 +377,7 @@ def friend_points_collect():
     else:
         logger.info('Issue claiming friends points!')
         recover()
+
 
 def mail_connect():
     logger.info('Claiming Mail')
@@ -383,6 +396,7 @@ def mail_connect():
     else:
         logger.info('Issue claiming Mail!')
         recover()
+
 
 def emporium_purchases():
     logger.info('Purchasing daily summon card')
@@ -407,6 +421,7 @@ def emporium_purchases():
         logger.info('Issue purchasing summon card!')
         recover()
 
+
 def arena(battles=9):
     timeout = 0
     counter = 0
@@ -422,13 +437,13 @@ def arena(battles=9):
         click_location('neutral')
         click_location('neutral')
         while counter < battles:
-            logger.info('Fighting Arena Battle ' + str(counter+1) + ' of ' + str(battles))
+            logger.info('Fighting Arena Battle ' + str(counter + 1) + ' of ' + str(battles))
             click_image('buttons/challenge', region=regions['bottom_buttons'], seconds=3, retry=5, confidence=0.8)
             if is_visible('buttons/confirm', region=regions['confirm_deny']):
                 # logger.info('Purchase challenge pop-up detected, confirming')
                 click_image('buttons/confirm', region=regions['confirm_deny'])
                 click_image('buttons/challenge', seconds=3, region=regions['bottom_buttons'])
-            click_xy(180, 1450, seconds=6) # Leftmost opponent
+            click_xy(180, 1450, seconds=6)  # Leftmost opponent
             click_image('buttons/battle', region=regions['bottom_buttons'])
             while not is_visible('labels/tap_to_close', region=regions['bottom_buttons'], confidence=0.8):
                 # Clear promotion screen if visible (not sure this does anything with while isVisible loop at the end covering the case)
@@ -439,7 +454,7 @@ def arena(battles=9):
                     click_image('buttons/confirm', suppress=True)
                     logger.info('Skip available, skipping the fight')
                 timeout += 1
-                if timeout > 40: # Should be about 10 seconds longer than a full fight at 2x
+                if timeout > 40:  # Should be about 10 seconds longer than a full fight at 2x
                     logger.info('Arena timeout error\n')
                     timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
                     save_screenshot('arena_timeout_' + timestamp)
@@ -461,6 +476,7 @@ def arena(battles=9):
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Arena battles completed!\n')
 
+
 def dream_realm():
     timer = 0
     logger.info('Battling Dream Realm')
@@ -468,13 +484,13 @@ def dream_realm():
 
     click_xy(450, 1825, seconds=3)
     click_image('buttons/dream_realm', region=regions['battle_modes'], seconds=3)
-    click_xy(1000, 50) # Clear new season info popup
+    click_xy(1000, 50)  # Clear new season info popup
 
     # First collect rewards
     if is_visible('buttons/battle', region=regions['bottom_buttons']):
         logger.info('Collecting previous round rewards')
         click_image('buttons/dr_rewards', region=regions['top_third'], seconds=4)
-        click_xy(550, 1800, seconds=2) # Clear loot
+        click_xy(550, 1800, seconds=2)  # Clear loot
         click_image('buttons/back2', region=regions['back'], seconds=3)
     else:
         logger.info('issue collecting rewards!')
@@ -487,13 +503,13 @@ def dream_realm():
         click_image('buttons/battle', region=regions['bottom_buttons'], seconds=5)
         click_image('buttons/battle', region=regions['bottom_buttons'], seconds=5)
         time.sleep(60)  # wait for battle to end
-        while not is_visible('labels/tap_to_close', region=regions['bottom_buttons']): # Few clicks to clear loot too
+        while not is_visible('labels/tap_to_close', region=regions['bottom_buttons']):  # Few clicks to clear loot too
             timer += 1
             if timer > 60:
                 logger.info('DR Timer Exceeded!')
                 break
             if is_visible('labels/dr_first_kill'):
-                click_xy(550, 1800) # clear rewards popup
+                click_xy(550, 1800)  # clear rewards popup
             pass
         click_image('labels/tap_to_close', region=regions['bottom_buttons'], seconds=5, suppress=True)
         if is_visible('buttons/deny', click=True, seconds=3):
@@ -509,6 +525,7 @@ def dream_realm():
         recover()
         return
 
+
 def single_recruit():
     logger.info('Attempting a single reruitment')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -521,7 +538,7 @@ def single_recruit():
     # Perform recruit, lots of long waits here as the animations are slow before we stabilise again
     if is_visible('labels/all_hero_recruitment', region=regions['bottom_buttons']):
         click_xy(250, 1550)
-        click_image('buttons/continue2', suppress=True) # long wait for animation
+        click_image('buttons/continue2', suppress=True)  # long wait for animation
         wait(15)
         click_image('buttons/back')
         click_image('buttons/back2', seconds=3)
@@ -539,7 +556,7 @@ def collect_quests():
 
     click_image('buttons/main_menu', region=regions['main_menu'])
     click_image('buttons/quests', region=regions['menu_activities'], seconds=3)
-    click_xy(300, 1800, seconds=2)# Daily quests
+    click_xy(300, 1800, seconds=2)  # Daily quests
 
     if is_visible('labels/daily_quests'):
         logger.info('    Collecting Daily Quests')
@@ -583,6 +600,7 @@ def collect_quests():
         recover()
         return
 
+
 def level_up():
     logger.info('Levelling available heroes')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
@@ -598,7 +616,7 @@ def level_up():
     # Level up all if enabled
     if config.getboolean('ADVANCED', 'use_level_up_all'):
         while is_visible('buttons/level_up_all_active', region=regions['bottom_third'], confidence=0.92):
-            click_image('buttons/level_up_all_active', region=regions['bottom_third'], confidence=0.92) # sligtly higher confidence as inactive is the same but greyscale
+            click_image('buttons/level_up_all_active', region=regions['bottom_third'], confidence=0.92)  # sligtly higher confidence as inactive is the same but greyscale
             logger.info('Level up all clicked!')
     # Else we level the heros individually
     else:
@@ -616,20 +634,21 @@ def level_up():
                 dust_level()
                 swipe(800, 1800, 800, 1800, 5000)  # Hacky way to hold it down
                 dust_level()
-            click_image('buttons/back', region=regions['bottom_third'], seconds=3, suppress=True, retry=1) # Back to Hero Box
+            click_image('buttons/back', region=regions['bottom_third'], seconds=3, suppress=True, retry=1)  # Back to Hero Box
 
     logger.info('Done!')
 
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Heroes levelled!\n')
 
-def farm_affinity(): # 100 is a failsafe in case we don't see Chippy
+
+def farm_affinity():  # 100 is a failsafe in case we don't see Chippy
     logger.info('Clicking all heroes for daily +6 affinity bonus')
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
 
     rare_counter = 0
-    click_xy(650, 1850, seconds=5) # Open heroes hall
-    click_xy(150, 1050, seconds=3) # Click top right hero
+    click_xy(650, 1850, seconds=5)  # Open heroes hall
+    click_xy(150, 1050, seconds=3)  # Click top right hero
 
     if is_visible('buttons/affinity', region=regions['top_third']):
         while rare_counter < 3:
@@ -650,18 +669,19 @@ def farm_affinity(): # 100 is a failsafe in case we don't see Chippy
         save_screenshot('affinity_opening_issue_' + timestamp)
         recover()
 
+
 def noble_path():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     logger.info('Collecting noble path')
     click_image('buttons/main_menu', region=regions['main_menu'], seconds=2)
     click_image('buttons/noble_path', region=regions['menu_activities'], seconds=5)
-    click_image('buttons/start', region=regions['bottom_buttons'], suppress=True, seconds=3) # To clear new noble pop-up
+    click_image('buttons/start', region=regions['bottom_buttons'], suppress=True, seconds=3)  # To clear new noble pop-up
 
     def claim_and_collect():
         # This will claim quests/collet rewards
-        click_xy(750, 450) # Click Quests
-        if is_visible('buttons/quick_claim', click=True, region=regions['bottom_third'], seconds=5): # Can also be 'claim_all_italics'
-            click_xy(1000, 1800) # Clear Loot
+        click_xy(750, 450)  # Click Quests
+        if is_visible('buttons/quick_claim', click=True, region=regions['bottom_third'], seconds=5):  # Can also be 'claim_all_italics'
+            click_xy(1000, 1800)  # Clear Loot
         # # Travelogue
         # clickXY(350, 450) # Click Trek
         # if isVisible('buttons/claim_all_italics', click=True, region=regions['bottom_third']):
@@ -688,6 +708,7 @@ def noble_path():
         logger.info('Something went wrong collecting Season Noble path!')
         recover()
 
+
 def claim_events():
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
     logger.info('Claiming event rewards')
@@ -697,7 +718,7 @@ def claim_events():
     # Guild Supremacy
     click_xy(770, 1830, seconds=4)
     if is_visible('labels/guild_supremacy'):
-        click_xy(530, 1820, seconds=2) # Tap to Close
+        click_xy(530, 1820, seconds=2)  # Tap to Close
         click_xy(1000, 100)
         if is_visible('labels/guild_medal_reward'):
             click_xy(530, 1820, seconds=2)  # Tap to Close
@@ -744,8 +765,8 @@ def claim_events():
     if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
         logger.info('Events claimed!\n')
 
-def formation_handler(formation_number=1, already_open=False):
 
+def formation_handler(formation_number=1, already_open=False):
     if globals()['load_formations'] is False:
         logger.info('Formation loading disabled')
         return
@@ -758,7 +779,7 @@ def formation_handler(formation_number=1, already_open=False):
     counter = 1
     unowned_counter = 0
     wait()
-    if already_open is False: # Sometimes we're already in the formations menu
+    if already_open is False:  # Sometimes we're already in the formations menu
         click_image('buttons/records', seconds=3)
     while counter != formation_number:
         click_xy(1000, 1025)
@@ -767,7 +788,7 @@ def formation_handler(formation_number=1, already_open=False):
     click_image('buttons/copy', seconds=2)
     # Handle 'Hero not owned' popup
     if is_visible('labels/not_owned'):
-        while is_visible('labels/not_owned'): # Try next formation and check again
+        while is_visible('labels/not_owned'):  # Try next formation and check again
             logger.info('Hero/Artifact not owned, trying next formation..')
             click_xy(360, 1250)
             click_xy(1000, 1025)
@@ -776,20 +797,20 @@ def formation_handler(formation_number=1, already_open=False):
             unowned_counter += 1
             if unowned_counter > 7:
                 logger.info('All formations contained an unowned hero!')
-                click_location('neutral') # Close windows back to battle screen
-                click_location('neutral') # Close windows back to battle screen
+                click_location('neutral')  # Close windows back to battle screen
+                click_location('neutral')  # Close windows back to battle screen
                 break
     click_image('buttons/confirm', suppress=True, seconds=0)
 
-def blind_push(mode, tower=None, load_formation=True):
 
+def blind_push(mode, tower=None, load_formation=True):
     # Opens first found tower and pushes until defeat, then exits
     if mode == "daily_towers":
         safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')
         logger.info('Pushing tower until first defeat')
         click_xy(460, 1820, seconds=2)
         click_image("labels/legend_trial", seconds=3, retry=3)
-        click_location('neutral') # To clear District popup
+        click_location('neutral')  # To clear District popup
 
         factions = ["Light", "Wilder", "Graveborn", "Mauler"]
         for faction in factions:
@@ -840,14 +861,13 @@ def blind_push(mode, tower=None, load_formation=True):
                                 # Increment defeats
                                 globals()['stage_defeats'] += 1
                                 # If were past the defeat cap handle formation change, else standard log output
-                                if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
+                                if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint( 'PUSHING', 'defeat_limit') == 0:
                                     globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
                                     logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
                                     wait()
                                     formation_handler(globals()['formation'])
                                 else:
                                     logger.info('Defeat #' + str(globals()['stage_defeats']) + '! Retrying')
-
 
         if safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='close'):
             logger.info('Towers pushed!\n')
@@ -867,7 +887,7 @@ def blind_push(mode, tower=None, load_formation=True):
             click_image('events/abyss', region=regions['bottom_third'])
             click_image('buttons/abyss_entry', region=regions['bottom_third'])
 
-        while is_visible('labels/trial_of_abyss', click=True): # First click can claim loot so we loop it to make sure we're opening ToA
+        while is_visible('labels/trial_of_abyss', click=True):  # First click can claim loot so we loop it to make sure we're opening ToA
             while True:
                 if not running.is_set():
                     running.wait()  # wait until running is set
@@ -898,10 +918,10 @@ def blind_push(mode, tower=None, load_formation=True):
         # 20 Attempts
         for _ in range(19):
             # Handle opening the Battle
-            if is_visible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5): # Enter battle screen
+            if is_visible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5):  # Enter battle screen
                 # Purchase Gold Attempts if it pops up
                 if is_visible('buttons/confirm', click=True, region=regions['confirm_deny']):
-                    click_image('buttons/battle', region=regions['bottom_buttons'], retry=2, seconds=5) # 2 retries or it catches the button on the next screen and breaks battle detection
+                    click_image('buttons/battle', region=regions['bottom_buttons'], retry=2, seconds=5)  # 2 retries or it catches the button on the next screen and breaks battle detection
                 # Start the Battle
                 logger.info('Starting Battle')
                 if is_visible('buttons/battle', region=regions['bottom_buttons'], click=True, seconds=5, retry=5):
@@ -922,7 +942,7 @@ def blind_push(mode, tower=None, load_formation=True):
                     if is_visible('buttons/deny', click=True, seconds=3):
                         logger.info('Skipping formation sharing..')
                         click_image('labels/tap_to_close', region=regions['bottom_buttons'], seconds=5, suppress=True)
-                    logger.info('Dream Realm Battle #' + str(_+1) + ' complete!')
+                    logger.info('Dream Realm Battle #' + str(_ + 1) + ' complete!')
                     dr_counter = 0
             else:
                 logger.info('Battle button not found! (battle ' + str(_) + ')')
@@ -940,11 +960,11 @@ def blind_push(mode, tower=None, load_formation=True):
             if load_formation is True or globals()['stage_defeats'] >= config.getint('PUSHING', 'defeat_limit'):
                 # More than 10 defeats in a row and a multiple of 10 (i.e load new formation on 10th/20th/30th etc defeat)
                 if globals()['stage_defeats'] >= 1 and globals()['stage_defeats'] % config.getint('PUSHING', 'defeat_limit') == 0:
-                    globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1 # number of defeats / defeat_limit, plus 1 as we start on formation #1
+                    globals()['formation'] = (globals()['stage_defeats'] / config.getint('PUSHING', 'defeat_limit')) + 1  # number of defeats / defeat_limit, plus 1 as we start on formation #1
                     logger.info(str(globals()['stage_defeats']) + ' defeats, trying next formation')
                     formation_handler(globals()['formation'])
-                    if globals()['first_stage_won'] is True: # Manually select second round if we've won the first
-                        wait() # To stop getting stuck if this buttons not pressed
+                    if globals()['first_stage_won'] is True:  # Manually select second round if we've won the first
+                        wait()  # To stop getting stuck if this buttons not pressed
                         click_xy(550, 1100)
                 elif load_formation is True:
                     formation_handler(globals()['formation'])
@@ -954,7 +974,7 @@ def blind_push(mode, tower=None, load_formation=True):
             # Start Battle
             click_image('buttons/battle', retry=5, region=regions['bottom_buttons'], seconds=0)
             click_image('buttons/confirm', seconds=0, suppress=True)
-            wait(5) # Long wait to stop false positives from the back button on the battle selection screen
+            wait(5)  # Long wait to stop false positives from the back button on the battle selection screen
 
             # Wait til we see the back button in the post battle screen before running next checks
             while not is_visible('buttons/back', region=regions['bottom_buttons'], seconds=2):
@@ -990,23 +1010,24 @@ def blind_push(mode, tower=None, load_formation=True):
             save_screenshot('afk_stage_error')
             recover()
 
-def open_afk_stages(afkstages=True):
 
+def open_afk_stages(afkstages=True):
     # open afk stage screen without prompting loot if it's >1h uncollected
     click_xy(450, 1825, seconds=3)
     click_image('buttons/afk_stage', region=regions['battle_modes'], seconds=4)
 
-    if afkstages is True: # Standard Stage
+    if afkstages is True:  # Standard Stage
         logger.info('Opening AFK Stages')
         logger.info('Changing formations after ' + str(config.getint('PUSHING', 'defeat_limit')) + ' defeats\n')
         # 3 clicks, first can collect loot, second can prompt 'Are you sure?' popup, 3rd opens stages for sure.
         click_xy(715, 1600, seconds=2)  # AFK Stage button
         click_image('buttons/confirm', suppress=True)
-    else: # Talent Stage
+    else:  # Talent Stage
         logger.info('Opening Talent Stages')
         logger.info('Changing formations after ' + str(config.getint('PUSHING', 'defeat_limit')) + ' defeats\n')
         click_xy(370, 1600, seconds=2)  # AFK Stage button
         click_image('buttons/confirm', suppress=True)
+
 
 def afk_stage_chain_proxy():
     formation_handler()
@@ -1037,6 +1058,7 @@ def afk_stage_chain_proxy():
                 click_image('buttons/battle', suppress=True, seconds=0, region=regions['bottom_third'])
                 click_image('buttons/confirm', suppress=True, seconds=0)
 
+
 def handle_charms():
     # Handles navigating the charms screen
     def go_back(exit_mode=False):
@@ -1053,10 +1075,10 @@ def handle_charms():
             if is_visible('labels/multiple_attempts', seconds=0):
                 logger.info('Out of tries!\n')
                 click_image('buttons/confirm')
-                if floor_type == 'nightmare': # Exit back to charm row selection screen
+                if floor_type == 'nightmare':  # Exit back to charm row selection screen
                     click_image('buttons/back', suppress=True, seconds=2)
                     click_image('buttons/back2', suppress=True, seconds=2)
-                else: # Else just exit back to the Dawnrise/Nightmare screen to we can naviate to Nightmare next
+                else:  # Else just exit back to the Dawnrise/Nightmare screen to we can naviate to Nightmare next
                     click_image('buttons/back', suppress=True, seconds=2)
                 break
             click_image('buttons/confirm', retry=1, suppress=True, seconds=0)
@@ -1082,7 +1104,7 @@ def handle_charms():
                     click_image('buttons/back', suppress=True, seconds=2)
                     break
             elif floor_type == 'nightmare':
-                if is_visible('buttons/continue_green', retry=1, click=True, seconds=5, grayscale=False, confidence=0.95): # High confidence so we don't catch the greyscale version
+                if is_visible('buttons/continue_green', retry=1, click=True, seconds=5, grayscale=False,confidence=0.95):  # High confidence so we don't catch the greyscale version
                     logger.info('Victory!\n')
                     globals()['stage_defeats'] = 0
                     formation_handler()
@@ -1102,8 +1124,7 @@ def handle_charms():
     click_xy(550, 1800, seconds=2)
 
     if is_visible('buttons/featured_heroes', retry=5, region=regions['top_third']):
-
-    # TODO Rewrite using regions for the 6 charm stages, to better handle duplicate code for top/bottom row
+        # TODO Rewrite using regions for the 6 charm stages, to better handle duplicate code for top/bottom row
 
         # Check top row
         logger.info('Checking top row Charm Trials..')
@@ -1136,7 +1157,7 @@ def handle_charms():
         # Check bottom row
         logger.info('Checking bottom row Charm Dawnrise Trials..')
         globals()['stage_defeats'] = 0
-        globals()['formation'] = 1 # Reset on new levels
+        globals()['formation'] = 1  # Reset on new levels
         if is_visible('buttons/rate_up', grayscale=True, click=True, region=(50, 1400, 950, 150), confidence=0.75, seconds=3):
 
             # Handle bottom row Dawnrise
@@ -1172,7 +1193,7 @@ def handle_charms():
 # Scans and pushes the various buttons needed to complete story/side quests
 # Very slow, can get stuck if there is a player present at an end point and we get the magnifying glass icon instead of the action icon
 # The order of checks and clicks is important to not get stuck in loops
-#TODO Get chest icon for collecting quest items / First run teleport prompt
+# TODO Get chest icon for collecting quest items / First run teleport prompt
 def quest_push():
     logger.info('Pushing Quests!\n')
     # The order of these is important
@@ -1189,12 +1210,14 @@ def quest_push():
             logger.info('Time changed!')
             wait(4)
 
+
 # Handle launch arguments
 
-if args['forceprint']: # Define a custom logging handler that duplicates log messages to stdout
+if args['forceprint']:  # Define a custom logging handler that duplicates log messages to stdout
     class DuplicatedStdoutHandler(logging.StreamHandler):
         def emit(self, record):
             print(self.format(record))
+
 
     stdout_handler = DuplicatedStdoutHandler()
     stdout_handler.setLevel(logging.INFO)
@@ -1260,7 +1283,7 @@ if args['afkt']:
 
 options = ["Run Dailies", "Push Towers", "Push AFK Stages", "Push AFK Talent Stages", "Push Dura's Trials", "Run Quests", "Use Dream Realm attempts", "Farm Team-Up Chat", "Farm Chain AFK Proxy Request"]
 selection = SelectionMenu.get_selection(options, title='Welcome to AutoAFK2! Select an activity:', subtitle='Note that to stop a task or start a new one you have to restart the bot. Questions? Jc.2 @ Discord')
-selection += 1 # Non-zero index to make things easier to read
+selection += 1  # Non-zero index to make things easier to read
 
 if selection == 1:
     dailies()
@@ -1322,7 +1345,7 @@ if selection == 2:
 
     if selection == 5:
         SelectionMenu.get_selection(options, title='Welcome to AutoAFK2! Select an activity:', subtitle='Note that to stop a task or start a new one you have to restart the bot. Questions? Jc.2 @ Discord')
-        selection += 1 # Non-zero index to make things easier to read
+        selection += 1  # Non-zero index to make things easier to read
 
 if selection == 3:
     safe_open_and_close(name=inspect.currentframe().f_code.co_name, state='open')

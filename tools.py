@@ -19,6 +19,7 @@ config = configparser.ConfigParser()
 adb = Client(host="127.0.0.1", port=5037)
 global device
 
+
 def connect_and_launch(port, server):
     global device
     counter = 0
@@ -67,13 +68,14 @@ def connect_and_launch(port, server):
 
     # Sometimes the game crashes when launching so we make sure its been running for 5 seconds before continuing
     device.shell('monkey -p ' + server + ' 1')
-    wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
+    wait(5)  # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
     while device.shell('pidof ' + server) == '':
         counter += 1
         device.shell('monkey -p ' + server + ' 1')
-        wait(5) # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
+        wait(5)  # This long wait doesn't slow anything down as the game takes 60 seconds to load anyway
         if counter > 5:
             logger.warning('Attempting to launch AFK Journey, but cannot detect AFK Journey running')
+
 
 def get_adb_device(port):
     # Start ADB if it's not running already
@@ -92,7 +94,7 @@ def get_adb_device(port):
         device_name = '127.0.0.1:' + port
         manage_adb_exe('connect', device_name)
         for found_devices in adb.devices():
-            if found_devices.serial[-4:] == port: # If device's port matches setting's port return the device
+            if found_devices.serial[-4:] == port:  # If device's port matches setting's port return the device
                 return found_devices
         # Else report nothing found
         logger.info('No device found with port ' + port)
@@ -115,6 +117,7 @@ def wait_until_game_active():
             logger.info('Timed out while loading! Guild button was not found so if everything looks good please check in game language is set to English.')
             save_screenshot('loading_timeout')
             sys.exit()
+
 
 def resolution_check():
     resolution_lines = device.shell('wm size').split('\n')
@@ -145,6 +148,7 @@ def click_xy(x, y, seconds=1):
     device.input_tap(x, y)
     wait(seconds)
 
+
 # Back button/neutral location etc can be called by name to make it a bit cleaner
 def click_location(location, seconds=1):
     locations = {
@@ -153,6 +157,7 @@ def click_location(location, seconds=1):
 
     click_xy(locations[location][0], locations[location][1])
     wait(seconds)
+
 
 def returnxy(image, confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
     screenshot = get_frame()
@@ -164,7 +169,7 @@ def returnxy(image, confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
         x, y, w, h = result
         return x, y
     else:
-        return 0, 0 # Prevents NoneType errors when unpacking if we don't find it
+        return 0, 0  # Prevents NoneType errors when unpacking if we don't find it
 
 
 # Wait command, default 1 second
@@ -174,6 +179,7 @@ def returnxy(image, confidence=0.9, grayscale=False, region=(0, 0, 1080, 1920)):
 # This is handy for slower machines where we need to wait for sections/images to load
 def wait(seconds=1):
     time.sleep(seconds * config.getfloat('ADVANCED', 'loading_multiplier'))
+
 
 # If the given image is found, it will click on the center of it, if not returns "No image found"
 # Confidence is how sure we are we have the right image, for animated icons we can lower the value
@@ -199,19 +205,20 @@ def click_image(image, confidence=0.9, seconds=1, retry=3, suppress=False, grays
                 wait(seconds)
                 return
             if suppress is not True:
-                logger.info('Retrying ' + image + ' search: ' + str(counter+1) + '/' + str(retry))
+                logger.info('Retrying ' + image + ' search: ' + str(counter + 1) + '/' + str(retry))
             counter = counter + 1
             wait(1)
     elif result is not None:
         x, y, w, h = result
-        x_center = round(x + w/2)
-        y_center = round(y + h/2)
+        x_center = round(x + w / 2)
+        y_center = round(y + h / 2)
         device.input_tap(x_center, y_center)
         wait(seconds)
     else:
         if suppress is not True:
             logger.info('Image:' + image + ' not found!')
         wait(seconds)
+
 
 # Pyscreeze's locate() searchs top down, sometimes we want to click the last found image (I.E the latest join button in chat)
 def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, grayscale=False, region=(0, 0, 1080, 1920)):
@@ -232,15 +239,15 @@ def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, graysc
                 wait(seconds)
                 return
             if suppress is not True:
-                logger.info('Retrying ' + image + ' search: ' + str(counter+1) + '/' + str(retry))
+                logger.info('Retrying ' + image + ' search: ' + str(counter + 1) + '/' + str(retry))
             counter = counter + 1
             wait(1)
     elif result is not None:
         list_results = list(result)
         if len(list_results) > 1:
             x, y, w, h = list_results[-1]
-            x_center = round(x + w/2)
-            y_center = round(y + h/2)
+            x_center = round(x + w / 2)
+            y_center = round(y + h / 2)
             device.input_tap(x_center, y_center)
             wait(seconds)
         else:
@@ -249,6 +256,7 @@ def click_last(image, confidence=0.9, seconds=1, retry=3, suppress=False, graysc
         if suppress is not True:
             logger.info('Image:' + image + ' not found!')
         wait(seconds)
+
 
 # 'delay' will pause between images else we try and click multiple at once
 def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=False, region=(0, 0, 1080, 1920), delay=0):
@@ -260,8 +268,8 @@ def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=Fal
             if suppress is not False:
                 logger.info(image + ' clicked!')
             x, y, w, h = result
-            x_center = round(x + w/2)
-            y_center = round(y + h/2)
+            x_center = round(x + w / 2)
+            y_center = round(y + h / 2)
             device.input_tap(x_center, y_center)
             wait(seconds)
             return
@@ -270,10 +278,12 @@ def click_array(images, confidence=0.9, seconds=1, suppress=False, grayscale=Fal
                 logger.info('Image:' + image + ' not found!')
         wait(delay)
 
+
 # Performs a swipe from X1/Y1 to X2/Y2 at the speed defined in duration (in milliseconds)
 def swipe(x1, y1, x2, y2, duration=100, seconds=1):
     device.input_swipe(x1, y1, x2, y2, duration)
     wait(seconds)
+
 
 # Returns True if the image is found, False if not
 # Confidence value can be reduced for images with animations
@@ -309,6 +319,7 @@ def is_visible(image, confidence=0.9, seconds=1, retry=3, click=False, region=(0
     else:
         return False
 
+
 # Takes a array of images as input, and returns the first found image from the array. If none are found returns 'not_found'
 # Useful for scanning for multiple images in one screenshot rathen than making multiple isVisible calls.
 def is_visible_array(images, confidence=0.9, seconds=1, click=False, region=(0, 0, 1080, 1920), xrelative=0, yrelative=0):
@@ -328,6 +339,7 @@ def is_visible_array(images, confidence=0.9, seconds=1, click=False, region=(0, 
     # If nothing found return false
     return 'not_found'
 
+
 # Returns the last frame from scrcpy, if the resolution isn't 1080 we scale it but this will only work in 16:9 resolutions
 def get_frame():
     im = Image.fromarray(device.srccpy.last_frame[:, :, ::-1])
@@ -336,6 +348,7 @@ def get_frame():
         im = im.resize((1080, 1920))
 
     return im
+
 
 # Saves screenshot locally
 def save_screenshot(name):
@@ -347,12 +360,14 @@ def save_screenshot(name):
     with open(name + '.png', 'wb') as f:
         f.write(image)
 
+
 def return_pixel_colour(x, y, c, seconds=1):
     im = get_frame()
-    screenshot = np.asarray(im) # Make it an array
+    screenshot = np.asarray(im)  # Make it an array
 
     wait(seconds)
     return screenshot[y, x, c]
+
 
 def recover(count=3):
     timer = 0
@@ -370,9 +385,11 @@ def recover(count=3):
         if is_visible('labels/sunandstars', region=(770, 40, 100, 100)):
             return True
 
+
 def debug_screen(name):
     timestamp = datetime.now().strftime('%d-%m-%y_%H-%M-%S')
     save_screenshot(name + '_' + timestamp)
+
 
 # We call this at the start and end of every activity to make sure we are back at the main map screen, if not we are lost and exit
 def safe_open_and_close(name, state):
