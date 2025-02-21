@@ -137,6 +137,12 @@ def main() -> None:
         bot.open_afk_stages(afkstages=False)
         bot.blind_push("afkstages")
 
+    if args.fish:
+        bot.safe_open_and_close(
+            name=inspect.currentframe().f_code.co_name, state="open"
+        )
+        bot.fishing()
+
     # If no function launch argument we pop the UI
     options = [
         "Run Dailies",

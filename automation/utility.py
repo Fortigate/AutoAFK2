@@ -43,6 +43,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("-afks", action="store_true", help="Run AFK Stages")
     parser.add_argument("-afkt", action="store_true", help="Run AFK Talent Stages")
+    parser.add_argument("-fish", action="store_true", help="Run the Fishing farming")
     parser.add_argument("-test", action="store_true", help="Used for testing functions")
     parser.add_argument(
         "-charms", action="store_true", help="Run the Dura's Trials function"
