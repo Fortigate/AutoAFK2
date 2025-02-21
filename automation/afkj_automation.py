@@ -2025,3 +2025,86 @@ class AFKJAutomation(EmulatorInteractions):
             ):
                 self.logger.info("Time changed!")
                 self.wait(4)
+
+    def fishing(self) -> None:
+        """Farms the fishing.
+        An experimental feature for AutoAFK2. Currently not completely implemented.
+        
+        The overall logic as follows:
+        1. **Open and choose a map**
+            1. click upper right corner to open map
+            2. click Starter Story
+            3. if found "check" button then click it. (character currently not in Starter Story maps)
+            4. swipe from left to right, homing the location of submaps
+            5. click the first submap
+        2. **Find fishing spot**
+            1. if found any available fishing spot then click it.
+            2. click "goto" button
+            3. wait until the "fishing_cast" button shows up. This means the character has arrived at the spot and start fishing.
+        3. **Fishing activity**
+            1. wait until "fishing_cast" or "fishing_pull" or "fishing_locked" buttons shows up then apply corresponding logic.
+            2. (see the fishing logic in following comments, which inspired by the so called "bang-bang control")
+        """
+
+        self.logger.info("Farming fishing!\n")
+        self.click_xy(880, 200, seconds=3)      # Open map
+        self.click_xy(400, 1800, seconds=3)     # Select Starter Story
+        self.swipe(400, 1600, 1000, 1600, 500)  # "Homing" sub-maps
+        self.click_xy(170, 1600, seconds=3)     # Select first sub-map, TODO: add support for iterating through all sub-maps
+
+        # Find fishing spot
+        spot = self.is_visible_array(
+            ["buttons/fishing_available_collected_spot",    # 100% collected spots
+             "buttons/fishing_available_spot"],             # Available spots
+            confidence=0.9,
+            seconds=3,
+        )
+
+        if spot != "not_found":
+            self.logger.info("Fishing spot found\n")
+            self.click(spot, confidence=0.9, seconds=3)     # Click the spot
+            self.click("buttons/goto", seconds=3)           # Click "goto" button
+            
+            # Wait until the "fishing_cast" button shows up with limited patience and click it
+            for _ in range(20):
+                self.wait(1)
+                if self.is_visible("buttons/fishing_cast", confidence=0.9, seconds=0) or \
+                   self.is_visible("buttons/fishing_pull", confidence=0.9, seconds=0):
+                    break
+
+            # Fishing activity
+            while True:
+                if self.is_visible("buttons/fishing_cast", confidence=0.9, seconds=0, click=True):
+                    self.logger.info("Fish caught!, cast again!\n")
+
+                elif self.is_visible("buttons/fishing_pull", confidence=0.9, seconds=0, click=True):
+                    self.logger.info("Start fighting!\n")
+
+                    # The following logic is inspired by the so called "bang-bang control"
+                    while not self.is_visible("buttons/fishing_cast", confidence=0.9, seconds=0):
+                        if self.is_visible("buttons/fishing_skill", confidence=0.9, seconds=0, click=True):
+                            # cast the skill, this will be the major contributor under the fishing logic
+                            pass
+                        elif self.is_visible("buttons/fishing_in_range", confidence=0.9, seconds=0):
+                            # do nothing, let the hook go left
+                            pass
+                        elif self.is_visible("buttons/fishing_cast", confidence=0.9, seconds=0):
+                            self.logger.info("Fish caught!, cast again!\n")
+                            break
+                        else:
+                            # TODO: press the "fishing_pull" button, move the hook righ until its in the "circle". (I'm not sure how to do "press" in the current framework)
+                            pass
+                        self.wait(1) # if there's any way to decrease the waiting time, it would be better (e.g. directly call `time.sleep()`)
+
+                elif self.is_visible("buttons/fishing_locked", confidence=0.9, seconds=0):
+                    self.logger.info("Spot locked!\n")
+
+                else:
+                    self.logger.info("Something went wrong!\n")
+                
+                self.wait(1)
+
+        else:
+            self.logger.info("No fishing spots found\n")
+
+        self.logger.info("Fishing farmed!\n")
